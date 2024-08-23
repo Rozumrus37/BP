@@ -1,0 +1,6 @@
+tests_multiobject/segment-anything-2/checkpoints/*
+tests_multiobject/segment-anything-2-real-time/checkpoints/
+SpaTracker/
+TapVid/
+tests_multiobject/workspace/
+tests_multiobject/workspace_1_seq/
