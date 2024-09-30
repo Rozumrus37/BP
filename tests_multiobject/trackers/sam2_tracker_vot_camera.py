@@ -17,13 +17,14 @@ if torch.cuda.get_device_properties(0).major >= 8:
     torch.backends.cudnn.allow_tf32 = False #True
 
 # from sam2.build_sam import build_sam2_camera_predictor
-from sam2.build_sam import build_sam2_video_realtime_predictor
+# from sam2.build_sam import build_sam2_video_realtime_predictor
+from sam2.build_sam import build_sam2_camera_predictor
 
 import time
 
 
-sam2_checkpoint = "/home.stud/rozumrus/BP/tests_multiobject/segment-anything-2/checkpoints/sam2_hiera_large.pt"
-model_cfg = "sam2_hiera_l.yaml"
+sam2_checkpoint = "/home.stud/rozumrus/BP/tests_multiobject/segment-anything-2/checkpoints/sam2_hiera_small.pt"
+model_cfg = "sam2_hiera_s.yaml"
 
 
 class SAM2Tracker(object):
@@ -31,28 +32,18 @@ class SAM2Tracker(object):
     def __init__(self, image, mask, cnt):
         
 
-        self.predictor = build_sam2_video_realtime_predictor(model_cfg, sam2_checkpoint) # build_sam2_camera_predictor
+        self.predictor = build_sam2_camera_predictor(model_cfg, sam2_checkpoint)
 
-        self.inference_state = self.predictor.init_state()
-
-
-        #self.predictor.load_first_frame(image)
-        
-        self.predictor.load_first_frame(self.inference_state, image)
-        
+        self.predictor.load_first_frame(image)
         if_init = True
 
         ann_frame_idx = 0  # the frame index we interact with
         ann_obj_id = 2  # give a unique id to each object we interact with (it can be any integers)
         # Let's add a positive click at (x, y) = (210, 350) to get started
-        iimage = cv2.imread(imagefile, cv2.IMREAD_UNCHANGED)
-        iimage = cv2.cvtColor(iimage, cv2.COLOR_BGR2RGB)
 
-
-        mask = self.pad_mask_to_image_size(mask, (iimage.shape[0], iimage.shape[1]))
+        mask = self.pad_mask_to_image_size(mask, (image.shape[0], image.shape[1]))
 
         _, out_obj_ids, out_mask_logits, ious_output = self.predictor.add_new_mask(
-            inference_state=self.inference_state,
             frame_idx=ann_frame_idx,
             obj_id=ann_obj_id,
             mask=mask
@@ -75,15 +66,10 @@ class SAM2Tracker(object):
         return padded_mask
 
     def track(self, image,c):
-        #out_obj_ids, out_mask_logits = self.predictor.track(image)
-
-        frame_idx, obj_ids, out_mask_logits, iou_output_scores_RR_added = self.predictor.track(self.inference_state, image, start_frame_idx=c)
-
-        #self.vis_segm(image, (out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0], "/home.stud/rozumrus/BP/tests_multiobject/out_sam2_25maskletN/" + str(c) + "_sam2_out.png")
+        out_obj_ids, out_mask_logits, iou_outputs = self.predictor.track(image)
 
         return (out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0]
-        
-        #return (out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0]
+
 
     def vis_segm(self, image, mask, output_file):
         non_zero_indices = np.nonzero(mask)
@@ -107,15 +93,15 @@ objects = handle.objects()
 
 imagefile = handle.frame()
 
-# image = cv2.imread(imagefile, cv2.IMREAD_UNCHANGED)
-# image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+image = cv2.imread(imagefile, cv2.IMREAD_UNCHANGED)
+image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
 trackers = []
 
 cnt, c = 0, 1
 
 for object in objects:
-    trackers.append(SAM2Tracker(imagefile, object, cnt))
+    trackers.append(SAM2Tracker(image, object, cnt))
     cnt += 1
 
 while True:
@@ -123,13 +109,13 @@ while True:
     if not imagefile:
         break
 
-    # image = cv2.imread(imagefile, cv2.IMREAD_UNCHANGED)
-    # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    image = cv2.imread(imagefile, cv2.IMREAD_UNCHANGED)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     out = []
     for tracker in trackers:
         # c += 1
-        out.append(tracker.track(imagefile, c))
+        out.append(tracker.track(image, c))
 
 
     c += 1

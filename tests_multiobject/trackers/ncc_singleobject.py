@@ -42,28 +42,18 @@ class NCCTracker(object):
 
         return vot.Rectangle(left + max_loc[0], top + max_loc[1], self.size[0], self.size[1]), max_val
 
-print(1)
 handle = vot.VOT("rectangle")
-print(2)
 selection = handle.region()
-print(3)
-
 imagefile = handle.frame()
-print(4)
 
 if not imagefile:
     sys.exit(0)
 
-print(5)
-
 image = cv2.imread(imagefile, cv2.IMREAD_GRAYSCALE)
-print(6)
 
 tracker = NCCTracker(image, selection)
-print(7)
 
 while True:
-    print(8)
 
     imagefile = handle.frame()
     if not imagefile:

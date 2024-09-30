@@ -1,0 +1,183 @@
+
+1. set_image
+	image_shape (480x640x3) -> (1024x1024x3) -> FPN (256x64x64)
+
+2. embed_points
+
+	There are 4 embeddings, which are summed up with the positional embedding:
+		0 - BG 
+		1 - FG
+		2 - left upper corner
+		3 - right bottom corner
+
+	final_point_embedding = 0/1/2/3_embedding + positional_embedding of a point
+
+3. embed_mask
+	downscale through the convolutions to 256x64x64
+	
+4. sparse_embeddings (using embed_points) -> 1x(N+1)x256, where N is the number of points and 1 stands for the embedding of [0, 0]
+
+5. dense_embeddings -> it is either downscaled mask using the method embed_mask or no_mask_embedding. Dimension is 256x64x64
+
+6. mask decoder:
+	tokens: [obj_score_token (256D), iou_token (256D), mask_tokens (4x256D), sparse_embeddings (N+1)x256D] ----> shape is 1x8x256
+
+	image_embedding = image_embedding + dense_embedding --> shape is 1x256x64x64
+
+	image_embedding -> reshape to 1x4096x256
+
+	2 times:
+		Q, K = tokens, image_embedding
+
+		q = self_attention (Q)
+		q = Q + cross_attention_token_to_image (q + pe_Q, K + pe_K, K)
+		q = q + mlp (q) 
+
+		k = K + pe_K
+		k = k + cross_attention_image_to_token (k, q + pe_Q, q)
+
+		return q, k
+
+	q = q + cross_attention_token_to_image (tokens + q, k + image_pe, k) 
+
+	return q, k  # where q are propagated tokens and k is propagated image_embedding
+
+
+	upscale the image_embedding to 1x32x256x256
+
+	output mask (1x4x256D) are passed through MLP to 1x4x32D 
+
+	Dot product between masks (1x4x32 D) and image_embedding(1x32x65536 D) resulting in the output masks of the shape 1x4x256x256
+
+	return masks (1x3x256x256), iou_pred (1x3), sam_tokens_out (1x3x256), object_score_logits(1x1)
+
+
+
+SAM2 for videos
+	use_mask_input_as_output_without_sam : True # whether to directly output the input mask without using a SAM prompt encoder + mask decoder
+	max_cond_frames_in_attn=-1 # The maximum number of conditioning frames to participate in the memory attention; -1 is for no limit
+	directly_add_no_mem_embed=False # on the first frame, whether to directly add the no-memory embedding to the image feature (instead of using the transformer encoder)
+	use_high_res_features_in_sam=False : whether to use high-resolution feature maps in the SAM mask decoer
+	multimask_output_in_sam=False : whether to output multiple (3) masks for the first click on initial conditioning frames
+	pred_obj_scores=False : whether to predict if there is an object in the frame
+	use_obj_ptrs_in_encoder : whether to cross-attend to object pointers from other frames (based on SAM output tokens) in the encoder
+
+
+	We decide if the object is visible depending on the sign of the logits (some logit > 0 then VISIBLE)
+
+	image_shape (480x640x3) -> (1024x1024x3) -> FPN (256x64x64)
+
+	vision_features : shape 256x64x64
+	vision_pos_enc : shape 256x256x256 -> conv_s0 (32x256x256), 256x128x128 -> conv_s1 (64x128x128), 256x64x64
+	backbone_fpn : shape 256x256x256, 256x128x128
+
+	inference_state['cached_features'] = {0 : image (1x3x1024x1024), backbone_fpn (0 : 1x32x256x256, 1 : 1x64x128x128, 2 : 1x256x64x64), vision_features (1x256x64x64), vision_pos_enc (1x256x256x256, 1x256x128x128, 1x256x64x64)}
+
+	inference_state['frames_already_tracked']
+
+
+
+	1. add_new_mask:
+		mask_inputs (1x1x480x640) -> mask_inputs (1x1x1024x1024)
+
+		runs SAM transformer with the input mask getting only encoded mask token corresponding to the highest IoU
+
+		ONLY UPDATES OBJ_PTR, everything else remains the same
+
+	2. forward_sam_heads does basically 1-6 from the SAM part
+
+	3. _use_mask_as_output
+
+	4. propagate_in_video 
+		inference_state = propagate_in_video_preflight()
+
+
+		for initial frames with the existing prompts
+			img_embedding = _get_image_feature()
+					maskmem_features = encode_memory(img_embedding, mask) using _consolidate_temp_output_across_obj
+
+
+		for frame_idx in frames:
+			initial frame : _run_memory_encoder is run on the first frame getting maskmem_features 
+
+			other frames : 
+				
+
+				track_step (img_embedding)
+					frame with the mask
+						output mask 
+
+					frame with the points/empty prompt
+						img_embedding_with_mem =_prepare_memory_conditioned_features (img_embedding) -> memory attn between img_embedding and memory=[maskmem_features (1x64x64x64 = 4096x1x64), obj_id 1x256=4x1x64)] = [4100x1x64]  
+
+						masks, ious = _forward_sam_heads(img_embeddings_with_mem)
+
+						maskmem_features = encode_memory(img_embeddings_with_mem) <- this feature along with the previous ones are used as the next prediction stages
+
+													
+													
+					# masks, iou_scores = _run_single_frame_inference(mask=None, pts=None, inference_state) # run tracking on a single frame based on curr inputs and previous memory							
+
+
+
+
+
+
+		_run_single_frame_inference 
+			track_step 
+
+
+
+
+
+
+
+
+
+
+
+
+
+	for the initial frame: image_embedding (256x64x64 -> 4096x256) + no_memory_embedding (256) 
+
+	obj_ptr stores mask with the highest IoU propagated through FCC/MLP
+
+	sam_outputs:
+		low_res_multimasks: torch.Size([1, 3, 256, 256])
+		high_res_multimasks: torch.Size([1, 3, 1024, 1024])
+		ious: tensor([[0.9458, 0.1931, 0.9380]]
+		low_res_masks: torch.Size([1, 1, 256, 256])
+		high_res_masks: torch.Size([1, 1, 1024, 1024])
+		obj_ptr: torch.Size([1, 256])
+		object_score_logits: tensor([[23.0156]]
+
+	single_frame_inference returns:
+		current_out:
+			point_inputs : point_coords, point_labels
+			mask_inputs :
+			pred_masks : 1x1x256x256
+			pred_masks_high_res : 1x1x1024x1024
+			obj_ptr : 1x256
+			maskmem_features :
+			maskmem_pos_enc :
+
+	track_step:
+		if the input is mask, then we use the input mask as the output
+
+
+	add_new_mask -> _run_single_frame_inference -> track_step -> _forward_sam_heads
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
