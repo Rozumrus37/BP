@@ -6,3 +6,9 @@ tests_multiobject/workspace/
 tests_multiobject/workspace_1_seq/
 .DS_Store
 ._.DS_Store
+tests_multiobject/trackers/book_imgs
+tests_multiobject/trackers/book_images_large
+tests_multiobject/trackers/realtimeRR_results_sam2
+tests_multiobject/trackers/realtime_results_sam2
+tests_multiobject/trackers/allatonce_results_sam2
+.*
