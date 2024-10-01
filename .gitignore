@@ -11,7 +11,6 @@ tests_multiobject/trackers/book_images_large
 tests_multiobject/trackers/realtimeRR_results_sam2
 tests_multiobject/trackers/realtime_results_sam2
 tests_multiobject/trackers/allatonce_results_sam2
-.*
 tests_multiobject/.*
 tests_multiobject/trackers/.*
 !.gitignore
