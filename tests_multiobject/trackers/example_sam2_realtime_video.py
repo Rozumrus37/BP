@@ -19,8 +19,8 @@ from sam2.build_sam import build_sam2_video_realtime_predictor #build_sam2_camer
 import time
 
 
-sam2_checkpoint = "/home.stud/rozumrus/BP/tests_multiobject/segment-anything-2/checkpoints/sam2_hiera_large.pt"
-model_cfg = "sam2_hiera_l.yaml"
+sam2_checkpoint = "/home.stud/rozumrus/BP/tests_multiobject/segment-anything-2/checkpoints/sam2_hiera_small.pt"
+model_cfg = "sam2_hiera_s.yaml"
 
 
 
@@ -36,7 +36,7 @@ def show_mask(mask, ax, obj_id=None, random_color=False, ann_frame_idx=0, last_c
     print("Mask output shape is: ", mask_image.shape, mask.shape)
 
     ax.imshow(mask_image)
-    plt.savefig('realtimeRR_results_sam2/' + name + '.png') #img_' + str(ann_frame_idx) + '_' + last_char + '.png')
+    #plt.savefig('realtimeRR_results_sam2/' + name + '.png') #img_' + str(ann_frame_idx) + '_' + last_char + '.png')
 
 
 
@@ -91,7 +91,7 @@ class SAM2Tracker(object):
 
         plt.imshow(image)
         show_points(points, labels, plt.gca())
-        show_mask((out_mask_logits[0] > 0).cpu().numpy(), plt.gca(), obj_id=out_obj_ids[0], ann_frame_idx=ann_frame_idx, last_char='bboxes')
+        #show_mask((out_mask_logits[0] > 0).cpu().numpy(), plt.gca(), obj_id=out_obj_ids[0], ann_frame_idx=ann_frame_idx, last_char='bboxes')
 
 
         _, out_obj_ids, out_mask_logits, ious_output = self.predictor.add_new_mask(
@@ -100,6 +100,8 @@ class SAM2Tracker(object):
             obj_id=ann_obj_id,
             mask=out_mask_logits[0][0],
         )
+
+
 
         plt.clf()
         plt.cla()
@@ -115,7 +117,38 @@ class SAM2Tracker(object):
 
     def track(self, image, out_frame_idx):
         #out_obj_ids, out_mask_logits, iou_output_scores_RR_added = self.predictor.track(image)
-        frame_idx, obj_ids, out_mask_logits, iou_output_scores_RR_added = self.predictor.track(inference_state, image, start_frame_idx=out_frame_idx)
+        points, labels = None, None
+
+        self.predictor.load_first_frame(inference_state, image, frame_idx=out_frame_idx)
+
+        if out_frame_idx == 1:
+            # ann_frame_idx = 1  # the frame index we interact with
+            # ann_obj_id = 1  # give a unique id to each object we interact with (it can be any integers)
+
+            # # Let's add a positive click at (x, y) = (210, 350) to get started
+            # points = np.array([[209, 109]], dtype=np.float32)
+            # # for labels, `1` means positive click and `0` means negative click
+            # labels = np.array([1], np.int32)
+
+            ann_frame_idx = 1  # the frame index we interact with
+            ann_obj_id = 1  # give a unique id to each object we interact with (it can be any integers)
+
+            # Let's add a positive click at (x, y) = (210, 350) to get started
+            points = np.array([[209, 109]], dtype=np.float32)
+            # for labels, `1` means positive click and `0` means negative click
+            labels = np.array([1], np.int32)
+            _, out_obj_ids, out_mask_logits, ious_output = self.predictor.add_new_points_or_box(
+                inference_state=inference_state,
+                frame_idx=ann_frame_idx,
+                obj_id=ann_obj_id,
+                points=points,
+                labels=labels,
+            )
+
+
+
+
+        frame_idx, obj_ids, out_mask_logits, iou_output_scores_RR_added = self.predictor.track(inference_state, image, start_frame_idx=out_frame_idx, points=None, labels=None)
 
         show_mask((out_mask_logits[0] > 0).cpu().numpy(), plt.gca(), obj_id=obj_ids[0], ann_frame_idx=out_frame_idx, last_char='bboxes', name=str(out_frame_idx))
 
@@ -142,7 +175,7 @@ class SAM2Tracker(object):
 video_segments = {} 
 
 
-video_dir = "book_images_large"
+video_dir = "/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/book/color" #"book_images_large"
 
 # scan all the JPEG frame names in this directory
 frame_names = [
@@ -183,13 +216,11 @@ for imagefile in frame_names: # frames 2...N
     frame_index += 1
 
 
-with open('realtimeRR_results_sam2/ious2.txt', 'w') as file:
-    # Loop through a range of numbers (e.g., 1 to 10)
+with open('IoU_scores/iou2prompts_realtime.txt', 'w') as file:
     cnt = 0
 
     for i in ious_scores:
         cnt+=1
-        # Write each number to the file, followed by a newline
         file.write(f"For the frame: {cnt}, iou is: {i}\n")
 
 

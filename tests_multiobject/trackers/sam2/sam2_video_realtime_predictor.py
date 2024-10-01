@@ -100,7 +100,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         return inference_state
 
     @torch.inference_mode()
-    def load_first_frame(self, inference_state, img_path):
+    def load_first_frame(self, inference_state, img_path, frame_idx=0):
         img, height, width = self._load_image_as_tensor(img_path, image_size=self.image_size)
 
         img_mean=(0.485, 0.456, 0.406)
@@ -111,7 +111,10 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         img -= img_mean
         img /= img_std
 
-        inference_state["images"] = [img]
+        if not ("images" in inference_state):
+            inference_state["images"] = [img]
+        else:
+            inference_state["images"].append(img)
         # print("LLLLLLLLLLLLL", len(img))
 
         inference_state["num_frames"] = len(img)
@@ -119,7 +122,8 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         inference_state["video_height"] = height
         inference_state["video_width"] = width
 
-        self._get_image_feature(inference_state, frame_idx=0, batch_size=1)
+        if frame_idx == 0:
+            self._get_image_feature(inference_state, frame_idx=0, batch_size=1)
 
 
     def _load_image_as_tensor(self, img_path, image_size):
@@ -687,19 +691,49 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         start_frame_idx=None,
         max_frame_num_to_track=None,
         reverse=False,
-    ):
+        points=None,
+        labels=None,
+        mask_inputs=None,
+    ):  
 
-        img, h_img, w_img = self._load_image_as_tensor(img, image_size=self.image_size)
+        point_inputs = None
+        
+        if labels != None:
+            
+            if points is None:
+                points = torch.zeros(0, 2, dtype=torch.float32)
+            elif not isinstance(points, torch.Tensor):
+                points = torch.tensor(points, dtype=torch.float32)
+            if labels is None:
+                labels = torch.zeros(0, dtype=torch.int32)
+            elif not isinstance(labels, torch.Tensor):
+                labels = torch.tensor(labels, dtype=torch.int32)
 
-        img_mean=(0.485, 0.456, 0.406)
-        img_std=(0.229, 0.224, 0.225)
+            if points.dim() == 2:
+                points = points.unsqueeze(0)  # add batch dimension
+            
+            if labels.dim() == 1:
+                labels = labels.unsqueeze(0)  # add batch dimension
 
-        img_mean = torch.tensor(img_mean, dtype=torch.float32)[:, None, None]
-        img_std = torch.tensor(img_std, dtype=torch.float32)[:, None, None]
-        img -= img_mean
-        img /= img_std
+            points = points * self.image_size
+            points = points.to(inference_state["device"])
+            labels = labels.to(inference_state["device"])
 
-        inference_state["images"].append(img)
+            point_inputs = concat_points(None, points, labels)
+
+
+
+        # img, h_img, w_img = self._load_image_as_tensor(img, image_size=self.image_size)
+
+        # img_mean=(0.485, 0.456, 0.406)
+        # img_std=(0.229, 0.224, 0.225)
+
+        # img_mean = torch.tensor(img_mean, dtype=torch.float32)[:, None, None]
+        # img_std = torch.tensor(img_std, dtype=torch.float32)[:, None, None]
+        # img -= img_mean
+        # img /= img_std
+
+        # inference_state["images"].append(img)
 
         print("LENNE", len(inference_state["images"]))
 
@@ -754,7 +788,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
                 frame_idx=frame_idx,
                 batch_size=batch_size,
                 is_init_cond_frame=False,
-                point_inputs=None,
+                point_inputs=point_inputs,
                 mask_inputs=None,
                 reverse=reverse,
                 run_mem_encoder=True,

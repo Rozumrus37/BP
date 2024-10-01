@@ -19,8 +19,8 @@ if torch.cuda.get_device_properties(0).major >= 8:
 
 from sam2.build_sam import build_sam2_video_predictor
 
-sam2_checkpoint = "/home.stud/rozumrus/BP/tests_multiobject/segment-anything-2/checkpoints/sam2_hiera_large.pt"
-model_cfg = "sam2_hiera_l.yaml"
+sam2_checkpoint = "/home.stud/rozumrus/BP/tests_multiobject/segment-anything-2/checkpoints/sam2_hiera_small.pt"
+model_cfg = "sam2_hiera_s.yaml"
 
 predictor = build_sam2_video_predictor(model_cfg, sam2_checkpoint, device='cuda')
 
@@ -37,7 +37,7 @@ def show_mask(mask, ax, obj_id=None, random_color=False, ann_frame_idx=0, last_c
     print("Mask output shape is: ", mask_image.shape, mask.shape)
 
     ax.imshow(mask_image)
-    plt.savefig('allatonce_results_sam2/img_' + str(ann_frame_idx) + '_' + last_char + '.png')
+    plt.savefig('iou1prompt_video_withN/img_' + str(ann_frame_idx) + '_' + last_char + '.png')
 
 
 
@@ -54,7 +54,7 @@ def show_box(box, ax):
     ax.add_patch(plt.Rectangle((x0, y0), w, h, edgecolor='green', facecolor=(0, 0, 0, 0), lw=2))
 
 
-video_dir = "book_images_large"
+video_dir =  "/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/book/color" 
 
 # scan all the JPEG frame names in this directory
 frame_names = [
@@ -98,6 +98,23 @@ _, out_obj_ids, out_mask_logits, ious_output = predictor.add_new_mask(
     mask=out_mask_logits[0][0],
 )
 
+
+# ann_frame_idx = 1  # the frame index we interact with
+# ann_obj_id = 1  # give a unique id to each object we interact with (it can be any integers)
+
+# # Let's add a positive click at (x, y) = (210, 350) to get started
+# points = np.array([[209, 109]], dtype=np.float32)
+# # for labels, `1` means positive click and `0` means negative click
+# labels = np.array([1], np.int32)
+# _, out_obj_ids, out_mask_logits, ious_output = predictor.add_new_points_or_box(
+#     inference_state=inference_state,
+#     frame_idx=ann_frame_idx,
+#     obj_id=ann_obj_id,
+#     points=points,
+#     labels=labels,
+# )
+
+
 plt.clf()
 plt.cla()
 
@@ -113,8 +130,28 @@ print("Shapes are: ", out_mask_logits.shape, out_mask_logits[0].shape, (out_mask
 
 ious_scores = []
 
+
+# print("YESYESYESYEYEYES")
+# ann_frame_idx = 1  # the frame index we interact with
+# ann_obj_id = 1  # give a unique id to each object we interact with (it can be any integers)
+
+# # Let's add a positive click at (x, y) = (210, 350) to get started
+# points = np.array([[209, 109]], dtype=np.float32)
+# # for labels, `1` means positive click and `0` means negative click
+# labels = np.array([1], np.int32)
+# _, out_obj_ids, out_mask_logits, ious_output = predictor.add_new_points_or_box(
+#     inference_state=inference_state,
+#     frame_idx=ann_frame_idx,
+#     obj_id=ann_obj_id,
+#     points=points,
+#     labels=labels,
+# )
+
 video_segments = {}  # video_segments contains the per-frame segmentation results
 for out_frame_idx, out_obj_ids, out_mask_logits, iou_output_scores_RR_added in predictor.propagate_in_video(inference_state):
+
+
+
     video_segments[out_frame_idx] = {
         out_obj_id: (out_mask_logits[i] > 0.0).cpu().numpy()
         for i, out_obj_id in enumerate(out_obj_ids)
@@ -123,7 +160,7 @@ for out_frame_idx, out_obj_ids, out_mask_logits, iou_output_scores_RR_added in p
     ious_scores.append(iou_output_scores_RR_added)
 
 
-with open('allatonce_results_sam2/ious_second_try.txt', 'w') as file:
+with open('IoU_scores/iou1prompt_video_withN.txt', 'w') as file:
     # Loop through a range of numbers (e.g., 1 to 10)
     cnt = 0
 

@@ -594,7 +594,8 @@ class SAM2Base(torch.nn.Module):
             if self.use_obj_ptrs_in_encoder:
                 # print("MAX OB PTRS IN ENCODER: ", self.max_obj_ptrs_in_encoder)
 
-                max_obj_ptrs_in_encoder =  self.max_obj_ptrs_in_encoder #min(num_frames, self.max_obj_ptrs_in_encoder)
+                max_obj_ptrs_in_encoder = self.max_obj_ptrs_in_encoder #min(num_frames, self.max_obj_ptrs_in_encoder)
+                print("NONONONO: ", num_frames, self.max_obj_ptrs_in_encoder)
                 # First add those object pointers from selected conditioning frames
                 # (optionally, only include object pointers in the past during evaluation)
                 if not self.training and self.only_obj_ptrs_in_the_past_for_eval:
@@ -613,11 +614,13 @@ class SAM2Base(torch.nn.Module):
                 # Add up to (max_obj_ptrs_in_encoder - 1) non-conditioning frames before current frame
                 for t_diff in range(1, max_obj_ptrs_in_encoder):
                     t = frame_idx + t_diff if track_in_reverse else frame_idx - t_diff
+
                     if t < 0: #or (num_frames is not None and t >= num_frames):
                         break
                     out = output_dict["non_cond_frame_outputs"].get(
                         t, unselected_cond_outputs.get(t, None)
                     )
+
                     if out is not None:
                         pos_and_ptrs.append((t_diff, out["obj_ptr"]))
                 # If we have at least one object pointer, add them to the across attention

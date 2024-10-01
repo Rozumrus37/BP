@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import imageio
 from PIL import Image
 
+
 # use bfloat16 for the entire notebook
 torch.autocast(device_type="cuda", dtype=torch.float16).__enter__()
 
@@ -22,8 +23,8 @@ from sam2.build_sam import build_sam2_video_realtime_predictor
 import time
 
 
-sam2_checkpoint = "/home.stud/rozumrus/BP/tests_multiobject/segment-anything-2/checkpoints/sam2_hiera_large.pt"
-model_cfg = "sam2_hiera_l.yaml"
+sam2_checkpoint = "/home.stud/rozumrus/BP/tests_multiobject/segment-anything-2/checkpoints/sam2_hiera_small.pt"
+model_cfg = "sam2_hiera_s.yaml"
 
 
 class SAM2Tracker(object):
@@ -76,6 +77,33 @@ class SAM2Tracker(object):
 
     def track(self, image,c):
         #out_obj_ids, out_mask_logits = self.predictor.track(image)
+        self.predictor.load_first_frame(self.inference_state, image, frame_idx=c)
+
+        # if c == 1:
+        #     # ann_frame_idx = 1  # the frame index we interact with
+        #     # ann_obj_id = 1  # give a unique id to each object we interact with (it can be any integers)
+
+        #     # # Let's add a positive click at (x, y) = (210, 350) to get started
+        #     # points = np.array([[209, 109]], dtype=np.float32)
+        #     # # for labels, `1` means positive click and `0` means negative click
+        #     # labels = np.array([1], np.int32)
+
+        #     ann_frame_idx = 1  # the frame index we interact with
+        #     ann_obj_id = 1  # give a unique id to each object we interact with (it can be any integers)
+
+        #     # Let's add a positive click at (x, y) = (210, 350) to get started
+        #     points = np.array([[209, 109]], dtype=np.float32)
+        #     # for labels, `1` means positive click and `0` means negative click
+        #     labels = np.array([1], np.int32)
+        #     _, out_obj_ids, out_mask_logits, ious_output = self.predictor.add_new_points_or_box(
+        #         inference_state=self.inference_state,
+        #         frame_idx=ann_frame_idx,
+        #         obj_id=ann_obj_id,
+        #         points=points,
+        #         labels=labels,
+        #     )
+
+
 
         frame_idx, obj_ids, out_mask_logits, iou_output_scores_RR_added = self.predictor.track(self.inference_state, image, start_frame_idx=c)
 

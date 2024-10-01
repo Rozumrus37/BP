@@ -635,12 +635,101 @@ class SAM2CameraPredictor(SAM2Base):
             input_frames_inds.update(mask_inputs_per_frame.keys())
         assert all_consolidated_frame_inds == input_frames_inds
 
+
+    @torch.inference_mode()
+    def track(
+        self,
+        img,
+    ):
+        self.frame_idx += 1
+        self.condition_state["num_frames"] += 1
+        if not self.condition_state["tracking_has_started"]:
+            self.propagate_in_video_preflight()
+
+        img, _, _ = self.perpare_data(img, image_size=self.image_size)
+
+        output_dict = self.condition_state["output_dict"]
+        obj_ids = self.condition_state["obj_ids"]
+        batch_size = self._get_obj_num()
+
+        # Retrieve correct image features
+        (
+            _,
+            _,
+            current_vision_feats,
+            current_vision_pos_embeds,
+            feat_sizes,
+        ) = self._get_feature(img, batch_size)
+
+        current_out = self.track_step(
+            frame_idx=self.frame_idx,
+            is_init_cond_frame=False,
+            current_vision_feats=current_vision_feats,
+            current_vision_pos_embeds=current_vision_pos_embeds,
+            feat_sizes=feat_sizes,
+            point_inputs=None,
+            mask_inputs=None,
+            output_dict=output_dict,
+            num_frames=self.condition_state["num_frames"],
+            track_in_reverse=False,
+            run_mem_encoder=True,
+            prev_sam_mask_logits=None,
+        )
+
+        # optionally offload the output to CPU memory to save GPU space
+        storage_device = self.condition_state["storage_device"]
+        maskmem_features = current_out["maskmem_features"]
+        if maskmem_features is not None:
+            maskmem_features = maskmem_features.to(torch.bfloat16)
+            maskmem_features = maskmem_features.to(storage_device, non_blocking=True)
+        pred_masks_gpu = current_out["pred_masks"]
+        # potentially fill holes in the predicted masks
+        if self.fill_hole_area > 0:
+            pred_masks_gpu = fill_holes_in_mask_scores(
+                pred_masks_gpu, self.fill_hole_area
+            )
+        pred_masks = pred_masks_gpu.to(storage_device, non_blocking=True)
+        # "maskmem_pos_enc" is the same across frames, so we only need to store one copy of it
+        maskmem_pos_enc = self._get_maskmem_pos_enc(current_out)
+        # object pointer is a small tensor, so we always keep it on GPU memory for fast access
+        obj_ptr = current_out["obj_ptr"]
+        # make a compact version of this frame's output to reduce the state size
+        current_out = {
+            "maskmem_features": maskmem_features,
+            "maskmem_pos_enc": maskmem_pos_enc,
+            "pred_masks": pred_masks,
+            "obj_ptr": obj_ptr,
+            "ious_output": current_out["ious_output"],
+        }
+
+        # output_dict[storage_key][self.frame_idx] = current_out
+        self._manage_memory_obj(self.frame_idx, current_out)
+
+        _, video_res_masks = self._get_orig_video_res_output(pred_masks_gpu)
+        return obj_ids, video_res_masks, current_out['ious_output']
+
+    def _manage_memory_obj(self, frame_idx, current_out):
+        output_dict = self.condition_state["output_dict"]
+        non_cond_frame_outputs = output_dict["non_cond_frame_outputs"]
+        non_cond_frame_outputs[frame_idx] = current_out
+
+        key_list = [key for key in output_dict["non_cond_frame_outputs"]]
+        #! TODO: better way to manage memory
+        if len(non_cond_frame_outputs) > self.num_maskmem:
+            for t in range(0, len(non_cond_frame_outputs) - self.num_maskmem):
+                # key, Value = non_cond_frame_outputs.popitem(last=False)
+                _ = non_cond_frame_outputs.pop(key_list[t], None)
+
+
     # @torch.inference_mode()
     # def track(
     #     self,
     #     img,
     # ):
+
+    
     #     self.frame_idx += 1
+    #     self.condition_state["num_frames"] += 1
     #     if not self.condition_state["tracking_has_started"]:
     #         self.propagate_in_video_preflight()
 
@@ -658,6 +747,7 @@ class SAM2CameraPredictor(SAM2Base):
     #         current_vision_pos_embeds,
     #         feat_sizes,
     #     ) = self._get_feature(img, batch_size)
+
 
 
     #     current_out = self.track_step(
@@ -704,106 +794,6 @@ class SAM2CameraPredictor(SAM2Base):
     #     storage_key = "non_cond_frame_outputs"
     #     _, video_res_masks = self._get_orig_video_res_output(pred_masks_gpu)
     #     return obj_ids, video_res_masks, current_out['ious_output']
-
-
-    @torch.inference_mode()
-    def track(
-        self,
-        img,
-    ):
-
-        # self.frame_idx += 1
-        # self.propagate_in_video_preflight()
-
-        # output_dict = self.condition_state["output_dict"]
-        # consolidated_frame_inds = self.condition_state["consolidated_frame_inds"]
-        # obj_ids = self.condition_state["obj_ids"]
-        # num_frames = self.condition_state["num_frames"]
-        # batch_size = self._get_obj_num()
-        # if len(output_dict["cond_frame_outputs"]) == 0:
-        #     raise RuntimeError("No points are provided; please add points first")
-        # clear_non_cond_mem = self.clear_non_cond_mem_around_input and (
-        #     self.clear_non_cond_mem_for_multi_obj or batch_size <= 1
-        # )
-
-        
-
-        # # Retrieve correct image features
-        # (
-        #     _,
-        #     _,
-        #     current_vision_feats,
-        #     current_vision_pos_embeds,
-        #     feat_sizes,
-        # ) = self._get_feature(img, batch_size)
-
-        
-        self.frame_idx += 1
-        self.condition_state["num_frames"] += 1
-        if not self.condition_state["tracking_has_started"]:
-            self.propagate_in_video_preflight()
-
-        img, _, _ = self.perpare_data(img, image_size=self.image_size)
-
-        output_dict = self.condition_state["output_dict"]
-        obj_ids = self.condition_state["obj_ids"]
-        batch_size = self._get_obj_num()
-
-        # Retrieve correct image features
-        (
-            _,
-            _,
-            current_vision_feats,
-            current_vision_pos_embeds,
-            feat_sizes,
-        ) = self._get_feature(img, batch_size)
-
-
-
-        current_out = self.track_step(
-            frame_idx=self.frame_idx,
-            is_init_cond_frame=False,
-            current_vision_feats=current_vision_feats,
-            current_vision_pos_embeds=current_vision_pos_embeds,
-            feat_sizes=feat_sizes,
-            point_inputs=None,
-            mask_inputs=None,
-            output_dict=output_dict,
-            num_frames=self.condition_state["num_frames"],
-            track_in_reverse=False,
-            run_mem_encoder=True,
-            prev_sam_mask_logits=None,
-        )
-
-        # optionally offload the output to CPU memory to save GPU space
-        storage_device = self.condition_state["storage_device"]
-        maskmem_features = current_out["maskmem_features"]
-        if maskmem_features is not None:
-            maskmem_features = maskmem_features.to(torch.bfloat16)
-            maskmem_features = maskmem_features.to(storage_device, non_blocking=True)
-        pred_masks_gpu = current_out["pred_masks"]
-        # potentially fill holes in the predicted masks
-        if self.fill_hole_area > 0:
-            pred_masks_gpu = fill_holes_in_mask_scores(
-                pred_masks_gpu, self.fill_hole_area
-            )
-        pred_masks = pred_masks_gpu.to(storage_device, non_blocking=True)
-        # "maskmem_pos_enc" is the same across frames, so we only need to store one copy of it
-        maskmem_pos_enc = self._get_maskmem_pos_enc(current_out)
-        # object pointer is a small tensor, so we always keep it on GPU memory for fast access
-        obj_ptr = current_out["obj_ptr"]
-        # make a compact version of this frame's output to reduce the state size
-        current_out = {
-            "maskmem_features": maskmem_features,
-            "maskmem_pos_enc": maskmem_pos_enc,
-            "pred_masks": pred_masks,
-            "obj_ptr": obj_ptr,
-            "ious_output": current_out["ious_output"],
-        }
-
-        storage_key = "non_cond_frame_outputs"
-        _, video_res_masks = self._get_orig_video_res_output(pred_masks_gpu)
-        return obj_ids, video_res_masks, current_out['ious_output']
 
 
     @torch.inference_mode()
