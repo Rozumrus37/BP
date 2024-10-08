@@ -6,6 +6,9 @@ import torch
 import matplotlib.pyplot as plt
 import imageio
 from PIL import Image
+import operator
+from first_mask_book import *
+
 
 # use bfloat16 for the entire notebook
 torch.autocast(device_type="cuda", dtype=torch.float16).__enter__()
@@ -36,7 +39,7 @@ def show_mask(mask, ax, obj_id=None, random_color=False, ann_frame_idx=0, last_c
     print("Mask output shape is: ", mask_image.shape, mask.shape)
 
     ax.imshow(mask_image)
-    #plt.savefig('realtimeRR_results_sam2/' + name + '.png') #img_' + str(ann_frame_idx) + '_' + last_char + '.png')
+    plt.savefig('JM_book/' + name +'_' + str(ann_frame_idx) +'.png') #img_' + str(ann_frame_idx) + '_' + last_char + '.png')
 
 
 
@@ -68,37 +71,39 @@ class SAM2Tracker(object):
         ann_frame_idx = 0  # the frame index we interact with
         ann_obj_id = 1  # give a unique id to each object we interact with (it can be any integers)
 
-        # Let's add a positive click at (x, y) = (210, 350) to get started
-        points = np.array([[244, 87]], dtype=np.float32)
-        # for labels, `1` means positive click and `0` means negative click
-        labels = np.array([1], np.int32)
-        _, out_obj_ids, out_mask_logits, ious_output = self.predictor.add_new_points(
-            inference_state=inference_state,
-            frame_idx=ann_frame_idx,
-            obj_id=ann_obj_id,
-            points=points,
-            labels=labels,
-            # frame_idx=ann_frame_idx,
-            # obj_id=ann_obj_id,
-            # points=points,
-            # labels=labels,
-        )
+        # # Let's add a positive click at (x, y) = (210, 350) to get started
+        # points = np.array([[244, 87]], dtype=np.float32)
+        # # for labels, `1` means positive click and `0` means negative click
+        # labels = np.array([1], np.int32)
+        # _, out_obj_ids, out_mask_logits, ious_output = self.predictor.add_new_points(
+        #     inference_state=inference_state,
+        #     frame_idx=ann_frame_idx,
+        #     obj_id=ann_obj_id,
+        #     points=points,
+        #     labels=labels,
+        #     # frame_idx=ann_frame_idx,
+        #     # obj_id=ann_obj_id,
+        #     # points=points,
+        #     # labels=labels,
+        # )
 
-        print("Shapes are: ", out_mask_logits.shape, out_mask_logits[0].shape, (out_mask_logits[0] > 0.0).cpu().numpy().shape, len(out_mask_logits))
-        print("First iteration IoUs: ", ious_output)
+        # print("Shapes are: ", out_mask_logits.shape, out_mask_logits[0].shape, (out_mask_logits[0] > 0.0).cpu().numpy().shape, len(out_mask_logits))
+        # print("First iteration IoUs: ", ious_output)
 
         image = Image.open(os.path.join(video_dir, frame_names[ann_frame_idx]))
 
-        plt.imshow(image)
-        show_points(points, labels, plt.gca())
-        #show_mask((out_mask_logits[0] > 0).cpu().numpy(), plt.gca(), obj_id=out_obj_ids[0], ann_frame_idx=ann_frame_idx, last_char='bboxes')
+        # plt.imshow(image)
+        # show_points(points, labels, plt.gca())
+        # #show_mask((out_mask_logits[0] > 0).cpu().numpy(), plt.gca(), obj_id=out_obj_ids[0], ann_frame_idx=ann_frame_idx, last_char='bboxes')
+        mask_input = get_first_mask_book()
 
+        # for i in range(1000):
 
         _, out_obj_ids, out_mask_logits, ious_output = self.predictor.add_new_mask(
             inference_state=inference_state,
             frame_idx=ann_frame_idx,
             obj_id=ann_obj_id,
-            mask=out_mask_logits[0][0],
+            mask=np.array(mask_input),#out_mask_logits[0][0],
         )
 
 
@@ -107,8 +112,15 @@ class SAM2Tracker(object):
         plt.cla()
 
         plt.imshow(image)
-        show_points(points, labels, plt.gca())
-        show_mask((out_mask_logits[0] > 0).cpu().numpy(), plt.gca(), obj_id=out_obj_ids[0], ann_frame_idx=ann_frame_idx, last_char='masks')
+        # show_points(points, labels, plt.gca())
+        show_mask((out_mask_logits[0] > 0).cpu().numpy(), plt.gca(), obj_id=out_obj_ids[0], ann_frame_idx=11, last_char='masks')
+
+        _, out_obj_ids, out_mask_logits, ious_output = self.predictor.add_new_mask(
+            inference_state=inference_state,
+            frame_idx=ann_frame_idx,
+            obj_id=ann_obj_id,
+            mask=np.array(mask_input),#out_mask_logits[0][0],
+        )
 
 
         print("Second iteration IoUs: ", ious_output)
@@ -121,38 +133,88 @@ class SAM2Tracker(object):
 
         self.predictor.load_first_frame(inference_state, image, frame_idx=out_frame_idx)
 
-        if out_frame_idx == 1:
-            # ann_frame_idx = 1  # the frame index we interact with
-            # ann_obj_id = 1  # give a unique id to each object we interact with (it can be any integers)
+        pts = [(2.955, 140), (3.059, 125), (3.06, 130), (3.133, 139), (3.223, 126)]
+        pointss = [(328, 219)]
 
-            # # Let's add a positive click at (x, y) = (210, 350) to get started
-            # points = np.array([[209, 109]], dtype=np.float32)
-            # # for labels, `1` means positive click and `0` means negative click
-            # labels = np.array([1], np.int32)
+      
+        # if out_frame_idx == 140:
 
-            ann_frame_idx = 1  # the frame index we interact with
-            ann_obj_id = 1  # give a unique id to each object we interact with (it can be any integers)
+        #     ann_obj_id = 1  # give a unique id to each object we interact with (it can be any integers)
 
-            # Let's add a positive click at (x, y) = (210, 350) to get started
-            points = np.array([[209, 109]], dtype=np.float32)
-            # for labels, `1` means positive click and `0` means negative click
-            labels = np.array([1], np.int32)
-            _, out_obj_ids, out_mask_logits, ious_output = self.predictor.add_new_points_or_box(
+        #     # Let's add a positive click at (x, y) = (210, 350) to get started
+        #     points = np.array([[328, 219]], dtype=np.float32)
+        #     # for labels, `1` means positive click and `0` means negative click
+        #     labels = np.array([1], np.int32)
+        #     _, out_obj_ids, out_mask_logits, ious_output = self.predictor.add_new_points_or_box(
+        #         inference_state=inference_state,
+        #         frame_idx=out_frame_idx,
+        #         obj_id=ann_obj_id,
+        #         points=points,
+        #         labels=labels,
+        #     )
+
+        # if out_frame_idx == 125:
+        #     ann_obj_id = 1
+        #     #points = np.array([[345, 222], [331, 238]], dtype=np.float32)
+            
+        #     box = np.array([308, 179, 391, 275], dtype=np.float32)
+
+        #     labels = np.array([1, 1], np.int32)
+        #     _, out_obj_ids, out_mask_logits, ious_output = predictor.add_new_points_or_box(
+        #         inference_state=inference_state,
+        #         frame_idx=out_frame_idx,
+        #         obj_id=ann_obj_id,
+        #         box=box,
+        #     )
+
+
+
+        # plt.imshow(image)
+        # show_points(points, labels, plt.gca())
+        # #show_mask((out_mask_logits[0] > 0).cpu().numpy(), plt.gca(), obj_id=out_obj_ids[0], ann_frame_idx=ann_frame_idx, last_char='bboxes')
+        mask_input = get_first_mask_book()
+
+
+
+        # if out_frame_idx <= 5:
+        #     _, out_obj_ids, out_mask_logits, ious_output = self.predictor.add_new_mask(
+        #         inference_state=inference_state,
+        #         frame_idx=out_frame_idx,
+        #         obj_id=1,
+        #         mask=np.array(mask_input),#out_mask_logits[0][0],
+        #     )
+
+
+        # if out_frame_idx == 140:
+        #     ann_obj_id = 1
+        #     #points = np.array([[328, 219]], dtype=np.float32)
+        #     #labels = np.array([1], np.int32)
+        #     box = np.array([293,176,363,258], dtype=np.float32)
+
+        #     _, out_obj_ids, out_mask_logits, ious_output = self.predictor.add_new_points_or_box(
+        #         inference_state=inference_state,
+        #         frame_idx=out_frame_idx,
+        #         obj_id=ann_obj_id,
+        #         box=box,
+        #     )
+        
+        if out_frame_idx >= 50 and out_frame_idx <= 52:
+            _, out_obj_ids, out_mask_logits, ious_output = self.predictor.add_new_mask(
                 inference_state=inference_state,
-                frame_idx=ann_frame_idx,
-                obj_id=ann_obj_id,
-                points=points,
-                labels=labels,
-            )
+                frame_idx=out_frame_idx,
+                obj_id=1,
+                mask=np.array(mask_input),
+            )   
 
 
 
+        frame_idx, obj_ids, out_mask_logits, iou_output_scores_RR_added, object_score_logits = self.predictor.track(inference_state, image, start_frame_idx=out_frame_idx, points=None, labels=None)
 
-        frame_idx, obj_ids, out_mask_logits, iou_output_scores_RR_added = self.predictor.track(inference_state, image, start_frame_idx=out_frame_idx, points=None, labels=None)
+
 
         show_mask((out_mask_logits[0] > 0).cpu().numpy(), plt.gca(), obj_id=obj_ids[0], ann_frame_idx=out_frame_idx, last_char='bboxes', name=str(out_frame_idx))
 
-        return obj_ids, out_mask_logits, iou_output_scores_RR_added
+        return obj_ids, out_mask_logits, iou_output_scores_RR_added, object_score_logits
 
     def vis_segm(self, image, mask, output_file):
         non_zero_indices = np.nonzero(mask)
@@ -182,7 +244,16 @@ frame_names = [
     p for p in os.listdir(video_dir)
     if os.path.splitext(p)[-1] in [".jpg", ".jpeg", ".JPG", ".JPEG"]
 ]
+
+frame_names = [i for i in frame_names if i[0] != '.']
+
 frame_names.sort(key=lambda p: int(os.path.splitext(p)[0]))
+
+# frame_names = []
+
+# for i in range(100):
+#     frame_names.append('00000001.jpg')
+# frame_names = ['00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg']
 
 imagefile= frame_names[0]
 print(imagefile)
@@ -195,10 +266,11 @@ tracker = SAM2Tracker(os.path.join(video_dir, imagefile)) #image)
 frame_index = 1
 
 ious_scores = []
+object_score_logits_scores =[]
 
 # import pdb; pdb.set_trace();
 frame_names =  frame_names[1:]
-
+minimum =[]
 
 plt.close("all")
 for imagefile in frame_names: # frames 2...N
@@ -209,18 +281,37 @@ for imagefile in frame_names: # frames 2...N
     plt.cla()
     plt.imshow(Image.open(os.path.join(video_dir, frame_names[frame_index-1])))
 
-    out_obj_ids, out_mask_logits, iou_output_scores_RR_added = tracker.track(os.path.join(video_dir, imagefile), frame_index)  #image, frame_index
+    out_obj_ids, out_mask_logits, iou_output_scores_RR_added, object_score_logits = tracker.track(os.path.join(video_dir, imagefile), frame_index)  #image, frame_index
 
     ious_scores.append(iou_output_scores_RR_added)
+    object_score_logits_scores.append(object_score_logits)
+    print("Occlusion: ", object_score_logits)
+    # minimum.append((np.array(object_score_logits.cpu())[0][0], frame_index))
+
 
     frame_index += 1
 
 
-with open('IoU_scores/iou2prompts_realtime.txt', 'w') as file:
+with open('IoU_scores/jm_occlusion_2.txt', 'w') as file:
     cnt = 0
 
-    for i in ious_scores:
+    for i, j in zip(ious_scores, object_score_logits_scores):
         cnt+=1
-        file.write(f"For the frame: {cnt}, iou is: {i}\n")
+        file.write(f"For the frame: {cnt}, iou is: {i} and occlusion scores are: {j} \n")
+
+
+# minimum = sorted(minimum, key=operator.itemgetter(0))
+
+# print(minimum[:5])
+
+
+
+
+
+
+
+
+
+
 
 

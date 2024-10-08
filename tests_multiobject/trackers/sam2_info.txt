@@ -1,14 +1,11 @@
-
+1
 1. set_image
 	image_shape (480x640x3) -> (1024x1024x3) -> FPN (256x64x64)
 
 2. embed_points
 
 	There are 4 embeddings, which are summed up with the positional embedding:
-		0 - BG 
-		1 - FG
-		2 - left upper corner
-		3 - right bottom corner
+		
 
 	final_point_embedding = 0/1/2/3_embedding + positional_embedding of a point
 
@@ -45,7 +42,7 @@
 
 	upscale the image_embedding to 1x32x256x256
 
-	output mask (1x4x256D) are passed through MLP to 1x4x32D 
+	output mask (1x4x256D) is passed through MLP to 1x4x32D 
 
 	Dot product between masks (1x4x32 D) and image_embedding(1x32x65536 D) resulting in the output masks of the shape 1x4x256x256
 

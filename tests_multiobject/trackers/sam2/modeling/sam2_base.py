@@ -516,7 +516,7 @@ class SAM2Base(torch.nn.Module):
         H, W = feat_sizes[-1]  # top-level (lowest-resolution) feature size
         device = current_vision_feats[-1].device
 
-        self.num_maskmem = 7
+        # self.num_maskmem = 14
 
         # The case of `self.num_maskmem == 0` below is primarily used for reproducing SAM on images.
         # In this case, we skip the fusion with any memory.
@@ -585,16 +585,22 @@ class SAM2Base(torch.nn.Module):
                 maskmem_enc = prev["maskmem_pos_enc"][-1].to(device)
                 maskmem_enc = maskmem_enc.flatten(2).permute(2, 0, 1)
                 # Temporal positional encoding
+                # if self.num_maskmem - t_pos - 1 <= 6:
+                #     maskmem_enc = (
+                #     maskmem_enc + self.maskmem_tpos_enc[self.num_maskmem - t_pos - 1]
+                # )
+                # else: 
                 maskmem_enc = (
                     maskmem_enc + self.maskmem_tpos_enc[self.num_maskmem - t_pos - 1]
                 )
+
                 to_cat_memory_pos_embed.append(maskmem_enc)
 
             # Construct the list of past object pointers
             if self.use_obj_ptrs_in_encoder:
                 # print("MAX OB PTRS IN ENCODER: ", self.max_obj_ptrs_in_encoder)
 
-                max_obj_ptrs_in_encoder = self.max_obj_ptrs_in_encoder #min(num_frames, self.max_obj_ptrs_in_encoder)
+                max_obj_ptrs_in_encoder = 32 #self.max_obj_ptrs_in_encoder #min(num_frames, self.max_obj_ptrs_in_encoder)
                 print("NONONONO: ", num_frames, self.max_obj_ptrs_in_encoder)
                 # First add those object pointers from selected conditioning frames
                 # (optionally, only include object pointers in the past during evaluation)
@@ -747,6 +753,8 @@ class SAM2Base(torch.nn.Module):
         prev_sam_mask_logits=None,
     ):
 
+        # import pdb; pdb.set_trace()
+
 
         current_out = {"point_inputs": point_inputs, "mask_inputs": mask_inputs}
         # High-resolution feature maps for the SAM head, reshape (HW)BC => BCHW
@@ -777,6 +785,8 @@ class SAM2Base(torch.nn.Module):
                 num_frames=num_frames,
                 track_in_reverse=track_in_reverse,
             )
+        
+
             # apply SAM-style segmentation head
             # here we might feed previously predicted low-res SAM mask logits into the SAM mask decoder,
             # e.g. in demo where such logits come from earlier interaction instead of correction sampling
@@ -799,12 +809,13 @@ class SAM2Base(torch.nn.Module):
             low_res_masks,
             high_res_masks,
             obj_ptr,
-            _,
+            object_score_logits,
         ) = sam_outputs
 
         current_out["pred_masks"] = low_res_masks
         current_out["pred_masks_high_res"] = high_res_masks
         current_out["obj_ptr"] = obj_ptr
+        current_out["object_score_logits"] = object_score_logits
 
         current_out['ious_output'] = ious_output 
 

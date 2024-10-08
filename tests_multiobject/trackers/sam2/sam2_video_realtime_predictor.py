@@ -115,7 +115,6 @@ class SAM2VideoRealtimePredictor(SAM2Base):
             inference_state["images"] = [img]
         else:
             inference_state["images"].append(img)
-        # print("LLLLLLLLLLLLL", len(img))
 
         inference_state["num_frames"] = len(img)
 
@@ -760,6 +759,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         frame_idx = start_frame_idx
 
         iou_output_scores_RR_added = [10, 10, 10]
+        object_score = -1000000
 
 
         # We skip those frames already in consolidated outputs (these are frames
@@ -794,6 +794,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
                 run_mem_encoder=True,
             )
             output_dict[storage_key][frame_idx] = current_out
+            object_score = current_out['object_score_logits']
 
             print("IoU scores for frame ", frame_idx, "are: ", iou_output_scores_RR_added)
 
@@ -809,7 +810,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         _, video_res_masks = self._get_orig_video_res_output(
             inference_state, pred_masks
         )
-        return frame_idx, obj_ids, video_res_masks, iou_output_scores_RR_added
+        return frame_idx, obj_ids, video_res_masks, iou_output_scores_RR_added, object_score
 
 
 
@@ -1073,6 +1074,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
             "maskmem_pos_enc": maskmem_pos_enc,
             "pred_masks": pred_masks,
             "obj_ptr": obj_ptr,
+            "object_score_logits": current_out['object_score_logits'],
         }
 
         # print("IOU output is: ", current_out['ious_output'])
@@ -1143,6 +1145,8 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         This method clears those non-conditioning memories surrounding the interacted
         frame to avoid giving the model both old and new information about the object.
         """
+        # self.num_maskmem = 14
+
         r = self.memory_temporal_stride_for_eval
         frame_idx_begin = frame_idx - r * self.num_maskmem
         frame_idx_end = frame_idx + r * self.num_maskmem
