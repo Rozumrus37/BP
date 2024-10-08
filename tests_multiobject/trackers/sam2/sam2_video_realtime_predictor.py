@@ -793,7 +793,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
                 reverse=reverse,
                 run_mem_encoder=True,
             )
-            output_dict[storage_key][frame_idx] = current_out
+            # output_dict[storage_key][frame_idx] = current_out
             object_score = current_out['object_score_logits']
 
             print("IoU scores for frame ", frame_idx, "are: ", iou_output_scores_RR_added)

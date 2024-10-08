@@ -600,7 +600,7 @@ class SAM2Base(torch.nn.Module):
             if self.use_obj_ptrs_in_encoder:
                 # print("MAX OB PTRS IN ENCODER: ", self.max_obj_ptrs_in_encoder)
 
-                max_obj_ptrs_in_encoder = 32 #self.max_obj_ptrs_in_encoder #min(num_frames, self.max_obj_ptrs_in_encoder)
+                max_obj_ptrs_in_encoder = self.max_obj_ptrs_in_encoder #min(num_frames, self.max_obj_ptrs_in_encoder)
                 print("NONONONO: ", num_frames, self.max_obj_ptrs_in_encoder)
                 # First add those object pointers from selected conditioning frames
                 # (optionally, only include object pointers in the past during evaluation)

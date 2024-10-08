@@ -58,7 +58,7 @@ def show_box(box, ax):
 
 class SAM2Tracker(object):
 
-    def __init__(self, image, mask, cnt):
+    def __init__(self, image, masks):#, cnt):
         
 
         self.predictor = build_sam2_video_realtime_predictor(model_cfg, sam2_checkpoint) 
@@ -67,26 +67,32 @@ class SAM2Tracker(object):
         
         self.predictor.load_first_frame(self.inference_state, image)
         self.prev_logit = -1000
-        
-        if_init = True
-
-        ann_frame_idx = 0  
-        ann_obj_id = 2  
+            
+        cnt = 0
         iimage = cv2.imread(imagefile, cv2.IMREAD_UNCHANGED)
         iimage = cv2.cvtColor(iimage, cv2.COLOR_BGR2RGB)
+        if_init = True
+
+        for object in objects:
+
+            ann_frame_idx = 0  
+            ann_obj_id = cnt #2  
+            mask = object
+
+            mask = self.pad_mask_to_image_size(mask, (iimage.shape[0], iimage.shape[1]))
 
 
-        mask = self.pad_mask_to_image_size(mask, (iimage.shape[0], iimage.shape[1]))
+            
+            _, out_obj_ids, out_mask_logits, ious_output = self.predictor.add_new_mask(
+                inference_state=self.inference_state,
+                frame_idx=ann_frame_idx,
+                obj_id=ann_obj_id,
+                mask=mask
+            )
 
+            cnt+=1
 
-        _, out_obj_ids, out_mask_logits, ious_output = self.predictor.add_new_mask(
-            inference_state=self.inference_state,
-            frame_idx=ann_frame_idx,
-            obj_id=ann_obj_id,
-            mask=mask
-        )
-
-        # with open('/home.stud/rozumrus/BP/tests_multiobject/trackers/first_mask_book.txt', 'a') as file:
+        # with open('/home.stud/rozumrus/BP/tests_multiobject/trackers/first_ball3_mask.txt', 'a') as file:
 
         #     for i in range(iimage.shape[0]):
         #         file.write(f"[")
@@ -116,7 +122,7 @@ class SAM2Tracker(object):
 
         return padded_mask
 
-    def track(self, image, out_frame_idx, obj_id):
+    def track(self, image, out_frame_idx):
         #out_obj_ids, out_mask_logits = self.predictor.track(image)
         self.predictor.load_first_frame(self.inference_state, image, frame_idx=out_frame_idx)
 
@@ -135,7 +141,9 @@ class SAM2Tracker(object):
 
         #self.vis_segm(image, (out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0], "/home.stud/rozumrus/BP/tests_multiobject/vot_output_2_1modified/" + str(c) + "_sam2_out.png")
 
-        return (out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0]
+        return {out_obj_id: (out_mask_logits[i] > 0.0).cpu().numpy().astype(np.uint8)[0] for i, out_obj_id in enumerate(obj_ids)} 
+
+        #(out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0]
         
         #return (out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0]
 
@@ -166,13 +174,9 @@ imagefile = handle.frame()
 # image = cv2.imread(imagefile, cv2.IMREAD_UNCHANGED)
 # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-trackers = []
+tracker = SAM2Tracker(imagefile, objects)
 
 cnt, c = 0, 1
-
-for object in objects:
-    trackers.append(SAM2Tracker(imagefile, object, cnt))
-    cnt += 1
 
 while True:
     imagefile = handle.frame()
@@ -182,15 +186,41 @@ while True:
     # image = cv2.imread(imagefile, cv2.IMREAD_UNCHANGED)
     # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    out = []
-    obj_id = 0
+    out = tracker.track(imagefile, c)
+    out = [out[i] for i in out]
 
-    for tracker in trackers:
-        out.append(tracker.track(imagefile, c, obj_id))
-        obj_id += 1
 
+ 
     c += 1
     handle.report(out)
+
+
+
+# trackers = []
+
+# cnt, c = 0, 1
+
+# for object in objects:
+#     trackers.append(SAM2Tracker(imagefile, object, cnt))
+#     cnt += 1
+
+# while True:
+#     imagefile = handle.frame()
+#     if not imagefile:
+#         break
+
+#     # image = cv2.imread(imagefile, cv2.IMREAD_UNCHANGED)
+#     # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+#     out = []
+#     obj_id = 0
+
+#     for tracker in trackers:
+#         out.append(tracker.track(imagefile, c, obj_id))
+#         obj_id += 1
+
+#     c += 1
+#     handle.report(out)
 
 
 # handle = vot_utils.VOT("mask")

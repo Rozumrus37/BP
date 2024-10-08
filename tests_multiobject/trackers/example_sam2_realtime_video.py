@@ -39,7 +39,7 @@ def show_mask(mask, ax, obj_id=None, random_color=False, ann_frame_idx=0, last_c
     print("Mask output shape is: ", mask_image.shape, mask.shape)
 
     ax.imshow(mask_image)
-    plt.savefig('JM_book/' + name +'_' + str(ann_frame_idx) +'.png') #img_' + str(ann_frame_idx) + '_' + last_char + '.png')
+    plt.savefig('JM_ball3/' + name +'_' + str(ann_frame_idx) +'.png') #img_' + str(ann_frame_idx) + '_' + last_char + '.png')
 
 
 
@@ -198,13 +198,13 @@ class SAM2Tracker(object):
         #         box=box,
         #     )
         
-        if out_frame_idx >= 50 and out_frame_idx <= 52:
-            _, out_obj_ids, out_mask_logits, ious_output = self.predictor.add_new_mask(
-                inference_state=inference_state,
-                frame_idx=out_frame_idx,
-                obj_id=1,
-                mask=np.array(mask_input),
-            )   
+        # if out_frame_idx >= 50 and out_frame_idx <= 50:
+        #     _, out_obj_ids, out_mask_logits, ious_output = self.predictor.add_new_mask(
+        #         inference_state=inference_state,
+        #         frame_idx=out_frame_idx,
+        #         obj_id=1,
+        #         mask=np.array(mask_input),
+        #     )   
 
 
 
@@ -237,7 +237,7 @@ class SAM2Tracker(object):
 video_segments = {} 
 
 
-video_dir = "/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/book/color" #"book_images_large"
+video_dir = "/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/ball3/color" #"book_images_large"
 
 # scan all the JPEG frame names in this directory
 frame_names = [
@@ -249,11 +249,11 @@ frame_names = [i for i in frame_names if i[0] != '.']
 
 frame_names.sort(key=lambda p: int(os.path.splitext(p)[0]))
 
-# frame_names = []
+frame_names = []
 
-# for i in range(100):
-#     frame_names.append('00000001.jpg')
-# frame_names = ['00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg']
+for i in range(100):
+    frame_names.append('00000001.jpg')
+frame_names = ['00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg', '00000001.jpg']
 
 imagefile= frame_names[0]
 print(imagefile)
