@@ -1,0 +1,6 @@
+Sequence : zebrafish1 with iou : 40.4287498003265
+Sequence : zebrafish1 with iou : 40.436454901208265
+Sequence : zebrafish1 with iou : 37.13170951630302
+Sequence : agility with iou : 72.4255808687618
+Sequence : book with iou : 89.22383627920584
+Sequence : conduction1 with iou : 6.343327626001438

@@ -1,0 +1,1 @@
+Sequence : soldier with iou : 44.89362882383741

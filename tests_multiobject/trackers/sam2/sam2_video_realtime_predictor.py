@@ -16,6 +16,8 @@ from sam2.utils.misc import concat_points, fill_holes_in_mask_scores, load_video
 from PIL import Image
 import numpy as np
 
+from compute_iou import obatin_iou
+
 class SAM2VideoRealtimePredictor(SAM2Base):
     """The predictor class to handle user interactions and manage inference states."""
 
@@ -37,6 +39,77 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         self.clear_non_cond_mem_around_input = clear_non_cond_mem_around_input
         self.clear_non_cond_mem_for_multi_obj = clear_non_cond_mem_for_multi_obj
         # self.num_maskmem = num_maskmem
+
+    # @torch.inference_mode()
+    # def init_state(
+    #     self,
+    #     video_path,
+    #     offload_video_to_cpu=False,
+    #     offload_state_to_cpu=False,
+    #     async_loading_frames=False,
+    # ):
+    #     """Initialize an inference state."""
+    #     compute_device = self.device  # device of the model
+    #     images, video_height, video_width = load_video_frames(
+    #         video_path=video_path,
+    #         image_size=self.image_size,
+    #         offload_video_to_cpu=offload_video_to_cpu,
+    #         async_loading_frames=async_loading_frames,
+    #         compute_device=compute_device,
+    #     )
+    #     inference_state = {}
+    #     inference_state["images"] = images
+    #     inference_state["num_frames"] = len(images)
+    #     # whether to offload the video frames to CPU memory
+    #     # turning on this option saves the GPU memory with only a very small overhead
+    #     inference_state["offload_video_to_cpu"] = offload_video_to_cpu
+    #     # whether to offload the inference state to CPU memory
+    #     # turning on this option saves the GPU memory at the cost of a lower tracking fps
+    #     # (e.g. in a test case of 768x768 model, fps dropped from 27 to 24 when tracking one object
+    #     # and from 24 to 21 when tracking two objects)
+    #     inference_state["offload_state_to_cpu"] = offload_state_to_cpu
+    #     # the original video height and width, used for resizing final output scores
+    #     inference_state["video_height"] = video_height
+    #     inference_state["video_width"] = video_width
+    #     inference_state["device"] = compute_device
+    #     if offload_state_to_cpu:
+    #         inference_state["storage_device"] = torch.device("cpu")
+    #     else:
+    #         inference_state["storage_device"] = compute_device
+    #     # inputs on each frame
+    #     inference_state["point_inputs_per_obj"] = {}
+    #     inference_state["mask_inputs_per_obj"] = {}
+    #     # visual features on a small number of recently visited frames for quick interactions
+    #     inference_state["cached_features"] = {}
+    #     # values that don't change across frames (so we only need to hold one copy of them)
+    #     inference_state["constants"] = {}
+    #     # mapping between client-side object id and model-side object index
+    #     inference_state["obj_id_to_idx"] = OrderedDict()
+    #     inference_state["obj_idx_to_id"] = OrderedDict()
+    #     inference_state["obj_ids"] = []
+    #     # A storage to hold the model's tracking results and states on each frame
+    #     inference_state["output_dict"] = {
+    #         "cond_frame_outputs": {},  # dict containing {frame_idx: <out>}
+    #         "non_cond_frame_outputs": {},  # dict containing {frame_idx: <out>}
+    #     }
+    #     # Slice (view) of each object tracking results, sharing the same memory with "output_dict"
+    #     inference_state["output_dict_per_obj"] = {}
+    #     # A temporary storage to hold new outputs when user interact with a frame
+    #     # to add clicks or mask (it's merged into "output_dict" before propagation starts)
+    #     inference_state["temp_output_dict_per_obj"] = {}
+    #     # Frames that already holds consolidated outputs from click or mask inputs
+    #     # (we directly use their consolidated outputs during tracking)
+    #     inference_state["consolidated_frame_inds"] = {
+    #         "cond_frame_outputs": set(),  # set containing frame indices
+    #         "non_cond_frame_outputs": set(),  # set containing frame indices
+    #     }
+    #     # metadata for each tracking frame (e.g. which direction it's tracked)
+    #     inference_state["tracking_has_started"] = False
+    #     inference_state["frames_already_tracked"] = {}
+    #     # Warm up the visual backbone and cache the image feature on frame 0
+    #     self._get_image_feature(inference_state, frame_idx=0, batch_size=1)
+    #     return inference_state
+
 
     @torch.inference_mode()
     def init_state(
@@ -429,7 +502,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
 
         # import pdb; pdb.set_trace()
 
-        return frame_idx, obj_ids, video_res_masks, ious_output
+        return frame_idx, obj_ids, video_res_masks, ious_output, current_out["pred_masks"]
 
     def _get_orig_video_res_output(self, inference_state, any_res_masks):
         """
@@ -693,6 +766,11 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         points=None,
         labels=None,
         mask_inputs=None,
+        best_masklets=None,
+        prev_mask=None,
+        alfa=0.1,
+        exclude_empty_masks=False,
+        no_memory_sam2=False,
     ):  
 
         point_inputs = None
@@ -732,7 +810,9 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         # img -= img_mean
         # img /= img_std
 
-        # inference_state["images"].append(img)
+        # inference_state["images"].append(img)\
+
+        low_res_output_mask = None
 
         print("LENNE", len(inference_state["images"]))
 
@@ -792,11 +872,66 @@ class SAM2VideoRealtimePredictor(SAM2Base):
                 mask_inputs=None,
                 reverse=reverse,
                 run_mem_encoder=True,
+                best_masklets=best_masklets,
+                alfa=alfa,
             )
-            # output_dict[storage_key][frame_idx] = current_out
+
+            # import pdb; pdb.set_trace()
+
+            low_res_output_mask = current_out['pred_masks']
+
+            _, video_res_masks = self._get_orig_video_res_output(
+                inference_state, pred_masks
+            )
+
+            worst_res_masks, second_best_res_masks = None, None 
+
+            if "worst_low_res_masks" in current_out and current_out["worst_low_res_masks"] != None:
+                _, worst_res_masks = self._get_orig_video_res_output(
+                    inference_state, current_out["worst_low_res_masks"]
+                )
+
+            if "second_best_low_res_masks" in current_out and current_out["second_best_low_res_masks"] != None:
+                _, second_best_res_masks = self._get_orig_video_res_output(
+                    inference_state, current_out["second_best_low_res_masks"]
+                )
+
+
+            # import pdb; pdb.set_trace();
+
+            IoU_prev_curr = obatin_iou(np.where(video_res_masks[0][0].cpu().numpy() > 0, 1, 0), np.where(prev_mask[0][0].cpu().numpy() > 0, 1, 0))
+
+
+            print("IOU PREV CURR: ", IoU_prev_curr)
+            
+            if not no_memory_sam2:
+                if exclude_empty_masks == False:
+                    output_dict[storage_key][frame_idx] = current_out
+                elif np.any(video_res_masks[0][0].cpu().numpy() > 0):
+                    output_dict[storage_key][frame_idx] = current_out
+
+            # import pdb; pdb.set_trace()
+
             object_score = current_out['object_score_logits']
 
             print("IoU scores for frame ", frame_idx, "are: ", iou_output_scores_RR_added)
+
+            # if IoU_prev_curr == 0:
+            #     output_dict[storage_key][frame_idx] = None
+            
+            # max_iou = max(iou_output_scores_RR_added.cpu().numpy()[0])
+            # max_iou = object_score.cpu().numpy()[0][0]
+
+            # if len(best_masklets) < 6:
+            #     best_masklets.append((frame_idx, max_iou))
+            # else:
+            #     best_masklets = sorted(best_masklets, key=lambda tup: tup[1], reverse=True)
+
+            #     if max_iou > best_masklets[5][1]:
+            #         best_masklets[5] = (frame_idx, max_iou)
+
+
+
 
         # Create slices of per-object outputs for subsequent interaction with each
         # individual object after tracking.
@@ -810,7 +945,8 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         _, video_res_masks = self._get_orig_video_res_output(
             inference_state, pred_masks
         )
-        return frame_idx, obj_ids, video_res_masks, iou_output_scores_RR_added, object_score
+
+        return frame_idx, obj_ids, video_res_masks, iou_output_scores_RR_added, object_score, best_masklets, worst_res_masks, second_best_res_masks, low_res_output_mask, IoU_prev_curr
 
 
 
@@ -861,6 +997,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         print("Order", processing_order)
 
         iou_output_scores_RR_added = [10, 10, 10]
+        # occlusion_scores = []
 
         for frame_idx in tqdm(processing_order, desc="propagate in video"):
             # We skip those frames already in consolidated outputs (these are frames
@@ -895,6 +1032,8 @@ class SAM2VideoRealtimePredictor(SAM2Base):
                     run_mem_encoder=True,
                 )
                 output_dict[storage_key][frame_idx] = current_out
+
+                # occlusion_scores = current_out['object_score_logits']
 
                 print("IoU scores for frame ", frame_idx, "are: ", iou_output_scores_RR_added)
 
@@ -1019,6 +1158,8 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         reverse,
         run_mem_encoder,
         prev_sam_mask_logits=None,
+        best_masklets=None,
+        alfa=0.1,
     ):
         """Run tracking on a single frame based on current inputs and previous memory."""
         # Retrieve correct image features
@@ -1045,6 +1186,11 @@ class SAM2VideoRealtimePredictor(SAM2Base):
             track_in_reverse=reverse,
             run_mem_encoder=run_mem_encoder,
             prev_sam_mask_logits=prev_sam_mask_logits,
+            best_masklets=best_masklets,
+            device=inference_state['device'],
+            video_H=inference_state['video_height'],
+            video_W=inference_state['video_width'],
+            alfa=alfa,
         )
 
 
@@ -1075,7 +1221,13 @@ class SAM2VideoRealtimePredictor(SAM2Base):
             "pred_masks": pred_masks,
             "obj_ptr": obj_ptr,
             "object_score_logits": current_out['object_score_logits'],
+            "ious_output" :  current_out['ious_output'],
+            "pred_masks_high_res" : current_out["pred_masks_high_res"],
+
+            "worst_low_res_masks" : current_out["worst_low_res_masks"],
+            "second_best_low_res_masks" : current_out["second_best_low_res_masks"],
         }
+
 
         # print("IOU output is: ", current_out['ious_output'])
     

@@ -1,0 +1,1 @@
+Sequence : birds2 with iou : 79.60550434771208

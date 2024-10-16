@@ -1,0 +1,1 @@
+Sequence : book with iou : 86.24518954795938

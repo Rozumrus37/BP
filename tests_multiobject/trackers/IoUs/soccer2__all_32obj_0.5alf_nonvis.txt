@@ -1,0 +1,1 @@
+Sequence : soccer2 with iou : 67.86512719514783

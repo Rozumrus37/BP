@@ -1,0 +1,80 @@
+Sequence : agility with iou : 71.39128017848611 and alfa 0.5 
+Sequence : book with iou : 89.45811276174791 and alfa 0.5 
+Sequence : conduction1 with iou : 2.707401378140093 and alfa 0.5 
+Sequence : drone1 with iou : 46.86075742088051 and alfa 0.5 
+Sequence : flamingo1 with iou : 28.518664247826475 and alfa 0.5 
+Sequence : hand with iou : 48.050853933763946 and alfa 0.5 
+Sequence : hand2 with iou : 29.992640695118617 and alfa 0.5 
+Sequence : rowing with iou : 67.97298008263685 and alfa 0.5 
+Sequence : zebrafish1 with iou : 6.377414327017098 and alfa 0.5 
+----------------
+Sequence : agility with iou : 71.51952032475432 and alfa 0.1 
+Sequence : book with iou : 89.76038645194065 and alfa 0.1 
+Sequence : conduction1 with iou : 2.6362654670970134 and alfa 0.1 
+Sequence : drone1 with iou : 45.675907397506414 and alfa 0.1 
+Sequence : flamingo1 with iou : 28.307669416326263 and alfa 0.1 
+Sequence : hand with iou : 49.238236459440046 and alfa 0.1 
+Sequence : hand2 with iou : 22.142452809588498 and alfa 0.1 
+Sequence : rowing with iou : 68.75432742386052 and alfa 0.1 
+Sequence : zebrafish1 with iou : 11.279602475823356 and alfa 0.1 
+----------------
+Sequence : agility with iou : 71.53842239846959 and alfa 0.25 
+Sequence : book with iou : 89.70708483950754 and alfa 0.25 
+Sequence : conduction1 with iou : 2.707401378140093 and alfa 0.25 
+Sequence : drone1 with iou : 46.007010124789545 and alfa 0.25 
+Sequence : flamingo1 with iou : 28.750788635550308 and alfa 0.25 
+Sequence : hand with iou : 48.82335657236087 and alfa 0.25 
+Sequence : hand2 with iou : 22.167038370306592 and alfa 0.25 
+Sequence : rowing with iou : 68.61326192166202 and alfa 0.25 
+Sequence : zebrafish1 with iou : 8.844918834012843 and alfa 0.25 
+----------------
+Sequence : agility with iou : 71.17488311980426 and alfa 1 
+Sequence : book with iou : 89.19399551852281 and alfa 1 
+Sequence : conduction1 with iou : 2.707401378140093 and alfa 1 
+Sequence : drone1 with iou : 46.948202672687934 and alfa 1 
+Sequence : flamingo1 with iou : 14.675688755968327 and alfa 1 
+Sequence : hand with iou : 48.21342274752657 and alfa 1 
+Sequence : hand2 with iou : 29.99118944459197 and alfa 1 
+Sequence : rowing with iou : 68.20291911928018 and alfa 1 
+Sequence : zebrafish1 with iou : 6.691215204877617 and alfa 1 
+----------------
+Sequence : agility with iou : 70.46917765955159 and alfa 2 
+Sequence : book with iou : 88.45235321206 and alfa 2 
+Sequence : conduction1 with iou : 2.707401378140093 and alfa 2 
+Sequence : drone1 with iou : 46.57155380372227 and alfa 2 
+Sequence : flamingo1 with iou : 14.38475057261053 and alfa 2 
+Sequence : hand with iou : 52.50564247264836 and alfa 2 
+Sequence : hand2 with iou : 29.68417121333613 and alfa 2 
+Sequence : rowing with iou : 68.9567899776993 and alfa 2 
+Sequence : zebrafish1 with iou : 6.671063891920335 and alfa 2 
+----------------
+Sequence : agility with iou : 70.28278338885868 and alfa 5 
+Sequence : book with iou : 86.26910081109364 and alfa 5 
+Sequence : conduction1 with iou : 2.707401378140093 and alfa 5 
+Sequence : drone1 with iou : 45.863730577082926 and alfa 5 
+Sequence : flamingo1 with iou : 13.313285424665358 and alfa 5 
+Sequence : hand with iou : 48.617456957070054 and alfa 5 
+Sequence : hand2 with iou : 29.55155125674475 and alfa 5 
+Sequence : rowing with iou : 69.27700490025684 and alfa 5 
+Sequence : zebrafish1 with iou : 6.671063891920335 and alfa 5 
+----------------
+Sequence : agility with iou : 48.85224526464997 and alfa 10 
+Sequence : book with iou : 85.55838791619931 and alfa 10 
+Sequence : conduction1 with iou : 2.707844109901315 and alfa 10 
+Sequence : drone1 with iou : 45.62215942144947 and alfa 10 
+Sequence : flamingo1 with iou : 13.342415257579388 and alfa 10 
+Sequence : hand with iou : 48.41372086436188 and alfa 10 
+Sequence : hand2 with iou : 29.139755445017578 and alfa 10 
+Sequence : rowing with iou : 69.47944726860224 and alfa 10 
+Sequence : zebrafish1 with iou : 6.675998221030769 and alfa 10 
+----------------
+Sequence : agility with iou : 48.85224526464997 and alfa 20 
+Sequence : book with iou : 79.24231215941887 and alfa 20 
+Sequence : conduction1 with iou : 2.707844109901315 and alfa 20 
+Sequence : drone1 with iou : 45.67924789176875 and alfa 20 
+Sequence : flamingo1 with iou : 13.339637528930195 and alfa 20 
+Sequence : hand with iou : 48.34135648477513 and alfa 20 
+Sequence : hand2 with iou : 29.54979530569065 and alfa 20 
+Sequence : rowing with iou : 70.17180411063065 and alfa 20 
+Sequence : zebrafish1 with iou : 6.666834661039789 and alfa 20 
+----------------

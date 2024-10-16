@@ -1,0 +1,1 @@
+Sequence : tiger with iou : 72.2139796587908

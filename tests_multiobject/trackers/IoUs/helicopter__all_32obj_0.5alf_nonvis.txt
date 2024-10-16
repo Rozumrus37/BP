@@ -1,0 +1,1 @@
+Sequence : helicopter with iou : 57.61606665081725

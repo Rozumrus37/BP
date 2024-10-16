@@ -1,0 +1,2 @@
+Sequence : hand2 with iou : 30.79561320794504
+Sequence : hand2 with iou : 30.79561320794504
