@@ -1,1 +1,0 @@
-Sequence : rowing with iou : 66.87599104987733

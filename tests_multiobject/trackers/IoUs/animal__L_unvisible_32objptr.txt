@@ -1,1 +1,0 @@
-Sequence : animal with iou : 82.23107925338013

@@ -23,8 +23,8 @@ from sam2.build_sam import build_sam2_camera_predictor
 import time
 
 
-sam2_checkpoint = "/home.stud/rozumrus/BP/tests_multiobject/segment-anything-2/checkpoints/sam2_hiera_small.pt"
-model_cfg = "sam2_hiera_s.yaml"
+sam2_checkpoint = "/home.stud/rozumrus/BP/tests_multiobject/segment-anything-2/checkpoints/sam2_hiera_large.pt"
+model_cfg = "sam2_hiera_l.yaml"
 
 
 class SAM2Tracker(object):

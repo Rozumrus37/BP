@@ -1,1 +1,0 @@
-Sequence : nature with iou : 89.97300159702257

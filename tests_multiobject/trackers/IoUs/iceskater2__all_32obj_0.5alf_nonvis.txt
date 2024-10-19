@@ -1,1 +1,0 @@
-Sequence : iceskater2 with iou : 80.59143593802816

@@ -1,1 +1,0 @@
-Sequence : fernando with iou : 86.40342157270247

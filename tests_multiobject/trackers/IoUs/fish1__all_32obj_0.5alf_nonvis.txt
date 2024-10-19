@@ -1,1 +1,0 @@
-Sequence : fish1 with iou : 79.45201198671415

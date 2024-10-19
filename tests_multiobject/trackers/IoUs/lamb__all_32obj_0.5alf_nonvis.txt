@@ -1,1 +1,0 @@
-Sequence : lamb with iou : 79.15605509919499

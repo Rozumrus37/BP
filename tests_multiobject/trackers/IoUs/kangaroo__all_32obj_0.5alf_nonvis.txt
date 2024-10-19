@@ -1,1 +1,0 @@
-Sequence : kangaroo with iou : 75.5306822867953

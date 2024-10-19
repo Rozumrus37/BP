@@ -1,1 +1,0 @@
-Sequence : handball1 with iou : 43.81449531508184

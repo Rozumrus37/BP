@@ -1,1 +1,0 @@
-Sequence : singer3 with iou : 66.51394038549215

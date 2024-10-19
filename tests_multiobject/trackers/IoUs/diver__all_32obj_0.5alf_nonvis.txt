@@ -1,1 +1,0 @@
-Sequence : diver with iou : 84.2497285094973

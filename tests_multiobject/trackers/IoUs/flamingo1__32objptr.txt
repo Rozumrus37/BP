@@ -1,1 +1,0 @@
-Sequence : flamingo1 with iou : 24.2292890097558

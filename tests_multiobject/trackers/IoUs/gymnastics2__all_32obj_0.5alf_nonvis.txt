@@ -1,1 +1,0 @@
-Sequence : gymnastics2 with iou : 82.5986401037051

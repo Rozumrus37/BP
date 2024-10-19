@@ -1,1 +1,0 @@
-Sequence : drone_across with iou : 70.53226451759672

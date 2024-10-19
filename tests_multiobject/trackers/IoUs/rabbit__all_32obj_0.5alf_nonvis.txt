@@ -1,1 +1,0 @@
-Sequence : rabbit with iou : 11.12163952264487

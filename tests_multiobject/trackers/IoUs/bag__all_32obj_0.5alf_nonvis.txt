@@ -1,1 +1,0 @@
-Sequence : bag with iou : 48.28558758465944

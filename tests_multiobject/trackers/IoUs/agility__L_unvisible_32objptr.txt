@@ -1,2 +1,0 @@
-Sequence : agility with iou : 72.6257831333735
-Sequence : agility with iou : 72.6257831333735

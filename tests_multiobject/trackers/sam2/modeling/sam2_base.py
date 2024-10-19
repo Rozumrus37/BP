@@ -1,3 +1,4 @@
+
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
 
@@ -308,7 +309,8 @@ class SAM2Base(torch.nn.Module):
         # print("High res features", high_res_features[0].shape, high_res_features[1].shape)
 
 
-        if frame_idx != None:
+        prev_mask = None
+        if frame_idx != None and device != None:
             if frame_idx == 1:
                 prev_mask = output_dict["cond_frame_outputs"][0]['pred_masks'] 
             elif frame_idx-1 in output_dict["non_cond_frame_outputs"]:
@@ -623,6 +625,7 @@ class SAM2Base(torch.nn.Module):
         num_frames,
         track_in_reverse=False,  # tracking in reverse time order (for demo usage)
         best_masklets=None,
+        num_of_obj_ptrs_in_sam2=16,
     ):
         """Fuse the current frame's visual feature map with previous memory."""
         B = current_vision_feats[-1].size(1)  # batch size on this frame
@@ -665,10 +668,8 @@ class SAM2Base(torch.nn.Module):
             # if best_masklets != None:
             #     best_masklets = sorted(best_masklets, key=lambda tup: tup[1], reverse=False)
 
-
-
-            for t_pos in step: #range(1, self.num_maskmem): #step
-                t_rel = t_pos #self.num_maskmem - t_pos  # t_pos # how many frames before current frame
+            for t_pos in range(1, self.num_maskmem): #step
+                t_rel = self.num_maskmem - t_pos  # t_pos # how many frames before current frame
                 if t_rel == 1:
                     # for t_rel == 1, we take the last frame (regardless of r)
                     if not track_in_reverse:
@@ -701,12 +702,11 @@ class SAM2Base(torch.nn.Module):
                     # frames, we still attend to it as if it's a non-conditioning frame.
                     out = unselected_cond_outputs.get(prev_frame_idx, None)
 
-                # t_pos_and_prevs.append((t_pos, out))
+                t_pos_and_prevs.append((t_pos, out))
                
 
-
-                t_pos_and_prevs.append((cnt, out))
-                cnt+=1
+                # t_pos_and_prevs.append((cnt, out))
+                # cnt+=1
 
             for t_pos, prev in t_pos_and_prevs:
                 if prev is None:
@@ -734,7 +734,7 @@ class SAM2Base(torch.nn.Module):
             if self.use_obj_ptrs_in_encoder:
                 # print("MAX OB PTRS IN ENCODER: ", self.max_obj_ptrs_in_encoder)
 
-                max_obj_ptrs_in_encoder = 32 #self.max_obj_ptrs_in_encoder #min(num_frames, self.max_obj_ptrs_in_encoder)
+                max_obj_ptrs_in_encoder = num_of_obj_ptrs_in_sam2 #self.max_obj_ptrs_in_encoder #min(num_frames, self.max_obj_ptrs_in_encoder)
                 print("NONONONO: ", num_frames, self.max_obj_ptrs_in_encoder)
                 # First add those object pointers from selected conditioning frames
                 # (optionally, only include object pointers in the past during evaluation)
@@ -889,7 +889,8 @@ class SAM2Base(torch.nn.Module):
         device=None,
         video_H=None,
         video_W=None,
-        alfa=0.1,
+        alfa=0,
+        num_of_obj_ptrs_in_sam2=16,
     ):
 
         # import pdb; pdb.set_trace()
@@ -924,6 +925,7 @@ class SAM2Base(torch.nn.Module):
                 num_frames=num_frames,
                 track_in_reverse=track_in_reverse,
                 best_masklets=best_masklets,
+                num_of_obj_ptrs_in_sam2=num_of_obj_ptrs_in_sam2,
             )
         
 
@@ -968,25 +970,6 @@ class SAM2Base(torch.nn.Module):
         current_out['ious_output'] = ious_output 
         current_out['worst_low_res_masks'] = worst_low_res_masks
         current_out['second_best_low_res_masks'] = second_best_low_res_masks
-
-
-
-        # if frame_idx == 19:
-        #     current_out = output_dict["non_cond_frame_outputs"][frame_idx-1]
-        # elif frame_idx == 20:
-        #     current_out = output_dict["non_cond_frame_outputs"][frame_idx-1]
-        # elif frame_idx == 21:
-        #     current_out = output_dict["non_cond_frame_outputs"][frame_idx-1]
-        # elif frame_idx == 22:
-        #     current_out = output_dict["non_cond_frame_outputs"][frame_idx-1]
-        # elif frame_idx == 23:
-        #     current_out = output_dict["non_cond_frame_outputs"][frame_idx-1]
-        # elif frame_idx == 24:
-        #     current_out = output_dict["non_cond_frame_outputs"][frame_idx-1]
-        # elif frame_idx == 25:
-        #     current_out = output_dict["non_cond_frame_outputs"][frame_idx-1]
-        # elif frame_idx == 26:
-        #     current_out = output_dict["non_cond_frame_outputs"][frame_idx-1]
 
 
         # Finally run the memory encoder on the predicted mask to encode

@@ -1,7 +1,0 @@
-Sequence : agility with iou : 71.45772233140045 
-Sequence : book with iou : 89.49797443351106 
-Sequence : agility with iou : 71.45772233140045 
-Sequence : animal with iou : 79.5416422994528 
-Sequence : ants1 with iou : 58.16374874603155 
-Sequence : bag with iou : 48.23196109490202 
-Sequence : ball2 with iou : 76.00362933228789 

@@ -1,1 +1,0 @@
-Sequence : polo with iou : 81.60560160218907

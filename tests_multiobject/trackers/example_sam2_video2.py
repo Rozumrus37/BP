@@ -19,26 +19,19 @@ ALFA=0.5
 SEQ_prompted = None 
 exclude_empty_masks = False
 no_memory_sam2=False
-
-# if len(sys.argv) > 1:
-#     save_path_endwords = sys.argv[1]
-
-#     if len(sys.argv) > 2:
-#         ALFA = float(sys.argv[2])
-
-#         if len(sys.argv) > 3:
-#             exclude_empty_masks = int(sys.argv[3])
-
-#             if len(sys.argv) > 4:
-#                 no_memory_sam2 = int(sys.argv[4])
-
-#                 if len(sys.argv) > 5:
-#                     SEQ_prompted = sys.argv[5:]
+num_of_obj_ptrs=16
+to_vis=False
+use_large_SAM2=False
+vis_IoU_graph=False
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--alfa', type=float)
-parser.add_argument('--exclude_empty_masks', type=bool)
-parser.add_argument('--no_memory', type=bool)
+parser.add_argument('--exclude_empty_masks', action="store_true")
+parser.add_argument('--no_memory', action="store_true")
+parser.add_argument('--num_obj_ptrs', type=int)
+parser.add_argument('--vis', action="store_true")
+parser.add_argument('--use_large_SAM2', action="store_true")
+parser.add_argument('--vis_IoU_graph', action="store_true")
 parser.add_argument('--sequences')
 
 args = parser.parse_args()
@@ -46,10 +39,14 @@ args = parser.parse_args()
 (ALFA, 
 exclude_empty_masks, 
 no_memory_sam2, 
-SEQ_prompted) = args.alfa, args.exclude_empty_masks, args.no_memory, args.sequences
+num_of_obj_ptrs,
+to_vis,
+use_large_SAM2,
+vis_IoU_graph,
+SEQ_prompted) = args.alfa, args.exclude_empty_masks, args.no_memory, args.num_obj_ptrs, args.vis, args.use_large_SAM2, args.vis_IoU_graph, args.sequences
 
-SEQ_prompted = SEQ_prompted.split()
-
+if SEQ_prompted != None:
+    SEQ_prompted = SEQ_prompted.split(",")
 
 # use bfloat16 for the entire notebook
 torch.autocast(device_type="cuda", dtype=torch.float16).__enter__()
@@ -61,8 +58,16 @@ if torch.cuda.get_device_properties(0).major >= 8:
 
 from sam2.build_sam import build_sam2_video_realtime_predictor
 
+if USE_HQ:
+    sam_checkpoint = "hq_sam/sam_hq/pretrained_checkpoint/sam_hq_vit_l.pth"
+    model_type = "vit_l"
+    device = "cuda"
+    sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
+    sam.to(device=device)
+    predictor = SamPredictor(sam)
 
-def show_mask(mask, ax, obj_id=None, random_color=False, ann_frame_idx=0, output_dir="temp", save_path_endwords=save_path_endwords):
+
+def show_mask(mask, ax, obj_id=None, random_color=False, ann_frame_idx=0, to_save_path=None):#save_path_endwords=save_path_endwords):
     if random_color:
         color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
     else:
@@ -72,7 +77,7 @@ def show_mask(mask, ax, obj_id=None, random_color=False, ann_frame_idx=0, output
     h, w = mask.shape[-2:]
     mask_image = mask.reshape(h, w, 1) * color.reshape(1, 1, -1)
 
-    DIR = os.path.join(BASE_dir, output_dir + "_alfa" + str(ALFA) + "_nomem" + str(no_memory_sam2) + "_excl_emp_masks" + str(exclude_empty_masks))# save_path_endwords)
+    DIR = to_save_path #os.path.join(BASE_dir, output_dir + "_a_" + str(ALFA) + "_nomem" + str(no_memory_sam2) + "_excl_EM_L" + str(exclude_empty_masks))# save_path_endwords)
 
     if not os.path.exists(DIR):
         os.makedirs(DIR)
@@ -83,33 +88,40 @@ def show_mask(mask, ax, obj_id=None, random_color=False, ann_frame_idx=0, output
     plt.savefig(final_path)
     
 def get_bounding_box(segmentation):
-    # Get the indices of the 1s in the array
     cols, rows = np.where(segmentation == True)
     
-    # If there are no 1s, return None or a default bbox
     if len(rows) == 0 or len(cols) == 0:
         return None
     
-    # Get the minimum and maximum row and column indices
     min_row, max_row = np.min(rows), np.max(rows)
     min_col, max_col = np.min(cols), np.max(cols)
     
-    # Return the top-left corner and bottom-right corner
     return (min_row, min_col, max_row, max_col)
 
+def vis_IoU_graph(ious, file_path):
+    fig, ax = plt.subplots()
 
-sam_checkpoint = "hq_sam/sam_hq/pretrained_checkpoint/sam_hq_vit_l.pth"
-model_type = "vit_l"
-device = "cuda"
-sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
-sam.to(device=device)
-predictor = SamPredictor(sam)
+    ax.plot(range(1, len(ious) + 1), ious, marker='o')
+
+    ax.set_xlabel('frame idx')
+    ax.set_ylabel('IoU')
+
+    file_path = file_path +'.png' 
+    plt.savefig(file_path)
+
+    plt.show()
+
 
 class SAM2Tracker(object):
 
-    def __init__(self, image_path, VIDEO_NAME, alfa=0):
-        model_cfg = "sam2_hiera_s.yaml"
-        sam2_checkpoint = "/home.stud/rozumrus/BP/tests_multiobject/segment-anything-2/checkpoints/sam2_hiera_small.pt"
+    def __init__(self, image_path, VIDEO_NAME, alfa=0, to_save_path=None):
+
+        if use_large_SAM2:
+            model_cfg = "sam2_hiera_l.yaml"
+            sam2_checkpoint = "/home.stud/rozumrus/BP/tests_multiobject/segment-anything-2/checkpoints/sam2_hiera_large.pt"
+        else:
+            model_cfg = "sam2_hiera_s.yaml"
+            sam2_checkpoint = "/home.stud/rozumrus/BP/tests_multiobject/segment-anything-2/checkpoints/sam2_hiera_small.pt"
         
         predictor = build_sam2_video_realtime_predictor(model_cfg, sam2_checkpoint)
         self.inference_state = predictor.init_state()
@@ -118,6 +130,7 @@ class SAM2Tracker(object):
         self.alfa = alfa
         self.predictor.load_first_frame(self.inference_state, image_path)
         self.best_masklets_prev = []
+        self.to_save_path = to_save_path
 
         if_init = True
         ann_frame_idx = 0  # the frame index we interact with
@@ -130,46 +143,14 @@ class SAM2Tracker(object):
             frame_idx=ann_frame_idx,
             obj_id=ann_obj_id,
             mask=np.array(self.mask_first_frame),#out_mask_logits[0][0],
+            num_of_obj_ptrs_in_sam2=num_of_obj_ptrs,
         )
+
+        if to_vis:
+            self.vis(out_mask_logits, out_obj_ids, str(0), image_path, self.to_save_path)
 
         self.prev_out_mask_logits = [out_mask_logits]
         self.ious = []
-
-        # sam_checkpoint = "hq_sam/sam_hq/pretrained_checkpoint/sam_hq_vit_l.pth"
-        # model_type = "vit_l"
-        # device = "cuda"
-        # sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
-        # sam.to(device=device)
-        # predictor = SamPredictor(sam)
-
-        # image = cv2.imread(image_path)
-        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        # # import pdb; pdb.set_trace()
-
-        # a, b, c, d = get_bounding_box((out_mask_logits[0] > 0).cpu().numpy()[0]) # np.array([[199,47,291,114]])
-
-        # input_box = np.array([a, b, c, d])
-
-        # input_point, input_label = None, None
-        # predictor.set_image(image)
-        # # import pdb; pdb.set_trace()
-        # masks, scores, logits = predictor.predict(
-        #     point_coords=input_point,
-        #     point_labels=input_label,
-        #     # mask_input=low_res_masks[0],
-        #     box = input_box,
-        #     multimask_output=False,
-        #     hq_token_only= False,
-        # )
-
-        # import pdb; pdb.set_trace()
-
-
-        # self.vis_sam_hq(masks, out_obj_ids, 888, self.video_name, image_path)
-
-
-        # self.vis(out_mask_logits, out_obj_ids, 0, self.video_name, image_path)
-    
 
     def track(self, image_path, out_frame_idx):
         self.predictor.load_first_frame(self.inference_state, image_path, frame_idx=out_frame_idx)
@@ -196,30 +177,25 @@ class SAM2Tracker(object):
             prev_mask=prev_mask, 
             alfa=self.alfa, 
             exclude_empty_masks=exclude_empty_masks,
-            no_memory_sam2=no_memory_sam2)
+            no_memory_sam2=no_memory_sam2,
+            num_of_obj_ptrs_in_sam2=num_of_obj_ptrs)
 
 
         self.best_masklets_prev = best_masklets
         
         self.prev_out_mask_logits.append(out_mask_logits)
 
-        #self.vis(out_mask_logits, obj_ids, out_frame_idx, self.video_name, image_path)
         print("Occlusion score: ", object_score_logits)
-
-        print("BESTSTSS", self.best_masklets_prev)
-
 
         if USE_HQ:
             image = cv2.imread(image_path)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            output = get_bounding_box((out_mask_logits[0] > 0).cpu().numpy()[0]) # np.array([[199,47,291,114]])
+            output = get_bounding_box((out_mask_logits[0] > 0).cpu().numpy()[0]) 
             if output != None:
                 a, b, c, d = output
                 input_box = np.array([a, b, c, d])
-
                 input_point, input_label = None, None
                 predictor.set_image(image)
-                # import pdb; pdb.set_trace()
                 masks, scores, logits = predictor.predict(
                     point_coords=input_point,
                     point_labels=input_label,
@@ -228,12 +204,14 @@ class SAM2Tracker(object):
                     multimask_output=False,
                     hq_token_only=False,
                 )
-                # self.vis_sam_hq(masks, obj_ids, out_frame_idx, self.video_name, image_path)
+                self.vis_sam_hq(masks, obj_ids, out_frame_idx, self.video_name, image_path)
         else:
             masks = (out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0]
-            self.vis(out_mask_logits, obj_ids, out_frame_idx, self.video_name, image_path)
-            # self.vis(second_best_res_masks, obj_ids, out_frame_idx, self.video_name + "_second_best", image_path)
-            # self.vis(worst_res_masks, obj_ids, out_frame_idx, self.video_name + "_third_best", image_path)
+
+            if to_vis:
+                self.vis(out_mask_logits, obj_ids, out_frame_idx, image_path, self.to_save_path)
+                # self.vis(second_best_res_masks, obj_ids, out_frame_idx, self.video_name + "_second_best", image_path)
+                # self.vis(worst_res_masks, obj_ids, out_frame_idx, self.video_name + "_third_best", image_path)
 
         self.ious.append(IoU_prev_curr)
 
@@ -251,7 +229,7 @@ class SAM2Tracker(object):
 
         show_mask(out_mask_logits[0], plt.gca(), obj_id=out_obj_ids[0], ann_frame_idx=ann_frame_idx, output_dir=output_dir)
 
-    def vis(self, out_mask_logits, out_obj_ids, ann_frame_idx, output_dir, image):
+    def vis(self, out_mask_logits, out_obj_ids, ann_frame_idx, image, to_save_path):
         image = Image.open(image)
 
         plt.clf()
@@ -259,13 +237,13 @@ class SAM2Tracker(object):
 
         plt.imshow(image)
 
-        show_mask((out_mask_logits[0] > 0).cpu().numpy(), plt.gca(), obj_id=out_obj_ids[0], ann_frame_idx=ann_frame_idx, output_dir=output_dir)
+        show_mask((out_mask_logits[0] > 0).cpu().numpy(), plt.gca(), obj_id=out_obj_ids[0], ann_frame_idx=ann_frame_idx, to_save_path=to_save_path)
 
 
-def run(seq, alfa=0.1):
+def run(seq, alfa=0.1, to_save_path="ious"):
     VIDEO_NAME = seq
     video_dir =  "/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/" + VIDEO_NAME + "/color" 
-    tracker = SAM2Tracker(os.path.join(video_dir, '00000001.jpg'), VIDEO_NAME, alfa)
+    tracker = SAM2Tracker(os.path.join(video_dir, '00000001.jpg'), VIDEO_NAME, alfa, to_save_path)
 
     frame_names = [
         p for p in os.listdir(video_dir)
@@ -278,42 +256,25 @@ def run(seq, alfa=0.1):
     frame_index = 1
     masks_out = []
 
-    for imagefile in frame_names[:60]:#frame_names: # frames 2...N
+    for imagefile in frame_names: 
         out_obj_ids, out_mask_logits, iou_output_scores_RR_added, object_score_logits = tracker.track(os.path.join(video_dir, imagefile), frame_index)  #image, frame_index
 
         masks_out.append(out_mask_logits)
-
-        # masks_out.append((out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0])
-
         frame_index += 1
 
-
-
-    # Create a figure and axis
-    fig, ax = plt.subplots()
-
-    # Plot the numbers with their indices on the x-axis
-    ax.plot(range(1, len(tracker.ious) + 1), tracker.ious, marker='o')
-
-    # Labeling the axes
-    ax.set_xlabel('frame idx')
-    ax.set_ylabel('IoU')
-
-
-    # Save the plot
-    file_path = 'ious_1_50_book.png'
-    plt.savefig(file_path)
-
-    # Show the plot
-    plt.show()
-
+    if vis_IoU_graph:
+        vis_IoU_graph(tracker.ious, to_save_path)
 
     return [tracker.mask_first_frame] + masks_out
 
 
-ALL_SEQ = ['book', 'agility', 'animal', 'ants1', 'bag', 'ball2', 'ball3', 'basketball', 'birds1', 'birds2', 'bolt1', 'bubble', 'butterfly', 'car1', 'conduction1', 'crabs1', 'dinosaur', 'diver', 'drone1', 'drone_across', 'fernando', 'fish1', 'fish2', 'flamingo1', 'frisbee', 'girl', 'graduate', 'gymnastics1', 'gymnastics2', 'gymnastics3', 'hand', 'hand2', 'handball1', 'handball2', 'helicopter', 'iceskater1', 'iceskater2', 'kangaroo', 'lamb', 'leaves', 'marathon', 'matrix', 'monkey', 'motocross1', 'nature', 'polo', 'rabbit', 'rabbit2', 'rowing', 'shaking', 'singer2', 'singer3', 'snake', 'soccer1', 'soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper', 'zebrafish1']
-SEQ= ['agility', 'book', 'conduction1', 'drone1', 'flamingo1', 'hand', 'hand2', 'rowing', 'zebrafish1']
-SEQ=['book', 'conduction1']
+ALL_SEQ = ['agility', 'animal', 'ants1', 'bag', 'ball2', 'ball3', 'basketball', 'birds1', 'birds2', 'bolt1', 'book', 'bubble', 'butterfly', 'car1', 'conduction1', 'crabs1', 'dinosaur', 'diver', 'drone1', 'drone_across', 'fernando', 'fish1', 'fish2', 'flamingo1', 'frisbee', 'girl', 'graduate', 'gymnastics1', 'gymnastics2', 'gymnastics3', 'hand', 'hand2', 'handball1', 'handball2', 'helicopter', 'iceskater1', 'iceskater2', 'kangaroo', 'lamb', 'leaves', 'marathon', 'matrix', 'monkey', 'motocross1', 'nature', 'polo', 'rabbit', 'rabbit2', 'rowing', 'shaking', 'singer2', 'singer3', 'snake', 'soccer1', 'soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper', 'zebrafish1']
+#SEQ= ['agility', 'book', 'conduction1', 'drone1', 'flamingo1', 'hand', 'hand2', 'rowing', 'zebrafish1']
+# ALL_SEQ = ['soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper', 'zebrafish1']
+SEQ=ALL_SEQ
+# SEQ=['flamingo1', 'frisbee', 'girl', 'graduate', 'gymnastics1', 'gymnastics2', 'gymnastics3', 'hand', 'hand2', 'handball1', 'handball2', 'helicopter', 'iceskater1', 'iceskater2', 'kangaroo', 'lamb', 'leaves', 'marathon', 'matrix', 'monkey', 'motocross1', 'nature', 'polo', 'rabbit', 'rabbit2', 'rowing', 'shaking', 'singer2', 'singer3', 'snake', 'soccer1', 'soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper', 'zebrafish1']
+
+# SEQ=['iceskater2', 'kangaroo', 'lamb', 'leaves', 'marathon', 'matrix', 'monkey', 'motocross1', 'nature', 'polo', 'rabbit', 'rabbit2', 'rowing', 'shaking', 'singer2', 'singer3', 'snake', 'soccer1', 'soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper', 'zebrafish1']
 
 
 if SEQ_prompted != None:
@@ -324,18 +285,43 @@ if SEQ_prompted != None:
 # alfas = [0.5, 0.1, 0.25, 1, 2, 5, 10, 20]
 
 # for alfa in alfas:
+all_ious = []
+
+large_or_small = 'L' if use_large_SAM2 else 'S'
+
+base_dir_save = os.path.join(BASE_dir, "alfa" + str(ALFA) + "_nomem" + str(int(no_memory_sam2)) + "_excl_EM" + str(int(exclude_empty_masks)) + "_OP" + str(num_of_obj_ptrs) + "_" + large_or_small)
+
+iou_save = base_dir_save + '/ious.txt'
+save_names = base_dir_save + '/names.txt'
+
 for seq in SEQ:
-    masks_out = run(seq, ALFA)
+    
+    to_save_path = os.path.join(base_dir_save, seq)
+
+    masks_out = run(seq, ALFA, to_save_path)
 
     iou_curr = get_iou(seq, masks_out)
     print("IoU is: ", iou_curr)
 
-    with open(os.path.join(BASE_dir, seq + "_alfa" + str(ALFA) + "_nomem" + str(no_memory_sam2) + "_excl_emp_masks" + str(exclude_empty_masks) + '.txt'), 'a') as file:
+    with open(os.path.join(to_save_path, 'iou.txt'), 'a') as file:
         file.write(f"Sequence : {seq} with iou : {iou_curr}\n")
 
+    # all_ious.append(iou_curr)
+
+    with open(iou_save, 'a') as file:
+        file.write(f"{iou_curr}\n")
+
+    with open(save_names, 'a') as file:
+        file.write(f"Sequence : {seq}\n")
 
 
-    
+# with open(os.path.join(BASE_dir, 'all.txt'), 'w') as file:
+#         for seq in SEQ:
+#             file.write(f"Sequence : {seq}\n")
+
+#         for iou_curr in all_ious:
+#             file.write(f"{iou_curr}\n")
+        
 
 
 

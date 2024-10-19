@@ -1,1 +1,0 @@
-Sequence : hand with iou : 72.11539726666055

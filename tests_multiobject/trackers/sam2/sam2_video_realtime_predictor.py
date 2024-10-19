@@ -424,6 +424,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         frame_idx,
         obj_id,
         mask,
+        num_of_obj_ptrs_in_sam2=16,
     ):
         """Add new mask to a frame."""
         obj_idx = self._obj_id_to_idx(inference_state, obj_id)
@@ -483,6 +484,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
             # allows us to enforce non-overlapping constraints on all objects before encoding
             # them into memory.
             run_mem_encoder=False,
+            num_of_obj_ptrs_in_sam2=num_of_obj_ptrs_in_sam2,
         )
         # Add the output to the output dict (to be used as future memory)
         obj_temp_output_dict[storage_key][frame_idx] = current_out
@@ -771,6 +773,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         alfa=0.1,
         exclude_empty_masks=False,
         no_memory_sam2=False,
+        num_of_obj_ptrs_in_sam2=16,
     ):  
 
         point_inputs = None
@@ -799,22 +802,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
             point_inputs = concat_points(None, points, labels)
 
 
-
-        # img, h_img, w_img = self._load_image_as_tensor(img, image_size=self.image_size)
-
-        # img_mean=(0.485, 0.456, 0.406)
-        # img_std=(0.229, 0.224, 0.225)
-
-        # img_mean = torch.tensor(img_mean, dtype=torch.float32)[:, None, None]
-        # img_std = torch.tensor(img_std, dtype=torch.float32)[:, None, None]
-        # img -= img_mean
-        # img /= img_std
-
-        # inference_state["images"].append(img)\
-
         low_res_output_mask = None
-
-        print("LENNE", len(inference_state["images"]))
 
         self.propagate_in_video_preflight(inference_state)
 
@@ -829,12 +817,10 @@ class SAM2VideoRealtimePredictor(SAM2Base):
             self.clear_non_cond_mem_for_multi_obj or batch_size <= 1
         )
 
-
         # set start index, end index, and processing order
         if start_frame_idx is None:
             # default: start from the earliest frame with input points
             start_frame_idx = min(output_dict["cond_frame_outputs"])
-
 
         frame_idx = start_frame_idx
 
@@ -874,6 +860,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
                 run_mem_encoder=True,
                 best_masklets=best_masklets,
                 alfa=alfa,
+                num_of_obj_ptrs_in_sam2=num_of_obj_ptrs_in_sam2,
             )
 
             # import pdb; pdb.set_trace()
@@ -905,7 +892,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
             print("IOU PREV CURR: ", IoU_prev_curr)
             
             if not no_memory_sam2:
-                if exclude_empty_masks == False:
+                if not exclude_empty_masks:
                     output_dict[storage_key][frame_idx] = current_out
                 elif np.any(video_res_masks[0][0].cpu().numpy() > 0):
                     output_dict[storage_key][frame_idx] = current_out
@@ -1160,6 +1147,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         prev_sam_mask_logits=None,
         best_masklets=None,
         alfa=0.1,
+        num_of_obj_ptrs_in_sam2=16,
     ):
         """Run tracking on a single frame based on current inputs and previous memory."""
         # Retrieve correct image features
@@ -1191,6 +1179,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
             video_H=inference_state['video_height'],
             video_W=inference_state['video_width'],
             alfa=alfa,
+            num_of_obj_ptrs_in_sam2=num_of_obj_ptrs_in_sam2,
         )
 
 

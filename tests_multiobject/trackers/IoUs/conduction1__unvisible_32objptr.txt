@@ -1,1 +1,0 @@
-Sequence : conduction1 with iou : 3.9712304740752167

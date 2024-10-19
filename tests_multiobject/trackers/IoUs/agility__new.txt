@@ -1,7 +1,0 @@
-Sequence : agility with iou : 68.1696727133607
-Sequence : agility with iou : 66.77291824129144
-Sequence : agility with iou : 62.87161264235842
-Sequence : agility with iou : 66.77291824129144
-Sequence : agility with iou : 66.65957400417604
-Sequence : agility with iou : 68.1696727133607
-Sequence : agility with iou : 66.56334461762683

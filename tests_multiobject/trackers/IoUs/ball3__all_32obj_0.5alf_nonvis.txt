@@ -1,1 +1,0 @@
-Sequence : ball3 with iou : 75.52225327262602
