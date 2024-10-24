@@ -167,7 +167,7 @@ class MemoryEncoder(nn.Module):
             masks = F.sigmoid(masks)
         masks = self.mask_downsampler(masks)
 
-        print("Masks after downsample: ", masks.shape)
+        # print("Masks after downsample: ", masks.shape)
 
         ## Fuse pix_feats and downsampled masks
         # in case the visual features are on CPU, cast them to CUDA
@@ -175,13 +175,13 @@ class MemoryEncoder(nn.Module):
 
         x = self.pix_feat_proj(pix_feat)
 
-        print("X shape is: ", x.shape)
+        # print("X shape is: ", x.shape)
         x = x + masks
         x = self.fuser(x)
 
-        print("after fuser: ", x.shape)
+        # print("after fuser: ", x.shape)
         x = self.out_proj(x)
-        print("after out proj: ", x.shape)
+        # print("after out proj: ", x.shape)
 
         pos = self.position_encoding(x).to(x.dtype)
 

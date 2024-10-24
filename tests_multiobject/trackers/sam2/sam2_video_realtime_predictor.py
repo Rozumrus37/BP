@@ -170,6 +170,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         inference_state["frames_already_tracked"] = {}
         # Warm up the visual backbone and cache the image feature on frame 0
         # self._get_image_feature(inference_state, frame_idx=0, batch_size=1)
+        self._get_image_feature(inference_state, frame_idx=0, batch_size=1)
         return inference_state
 
     @torch.inference_mode()
@@ -425,6 +426,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         obj_id,
         mask,
         num_of_obj_ptrs_in_sam2=16,
+        memory_temporal_stride_for_eval_r=1,
     ):
         """Add new mask to a frame."""
         obj_idx = self._obj_id_to_idx(inference_state, obj_id)
@@ -485,6 +487,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
             # them into memory.
             run_mem_encoder=False,
             num_of_obj_ptrs_in_sam2=num_of_obj_ptrs_in_sam2,
+            memory_temporal_stride_for_eval_r=memory_temporal_stride_for_eval_r,
         )
         # Add the output to the output dict (to be used as future memory)
         obj_temp_output_dict[storage_key][frame_idx] = current_out
@@ -626,7 +629,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         # and rerun the memory encoder
         if run_mem_encoder:
             device = inference_state["device"]
-            print("pred mask shape is: ", consolidated_out["pred_masks"].shape)
+            # print("pred mask shape is: ", consolidated_out["pred_masks"].shape)
 
             high_res_masks = torch.nn.functional.interpolate(
                 consolidated_out["pred_masks"].to(device, non_blocking=True),
@@ -774,6 +777,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         exclude_empty_masks=False,
         no_memory_sam2=False,
         num_of_obj_ptrs_in_sam2=16,
+        memory_temporal_stride_for_eval_r=1,
     ):  
 
         point_inputs = None
@@ -839,13 +843,13 @@ class SAM2VideoRealtimePredictor(SAM2Base):
             if clear_non_cond_mem:
                 # clear non-conditioning memory of the surrounding frames
                 self._clear_non_cond_mem_around_input(inference_state, frame_idx)
-            print("Cond frame: ", frame_idx)
-            print("Before propagation: ",  inference_state["output_dict"]['cond_frame_outputs'][0]['maskmem_features'])
+            # print("Cond frame: ", frame_idx)
+            # print("Before propagation: ",  inference_state["output_dict"]['cond_frame_outputs'][0]['maskmem_features'])
         elif frame_idx in consolidated_frame_inds["non_cond_frame_outputs"]:
             storage_key = "non_cond_frame_outputs"
             current_out = output_dict[storage_key][frame_idx]
             pred_masks = current_out["pred_masks"]
-            print("Non cond frame with added pts/mask: ", frame_idx)
+            # print("Non cond frame with added pts/mask: ", frame_idx)
         else:
             storage_key = "non_cond_frame_outputs"
             current_out, pred_masks, iou_output_scores_RR_added = self._run_single_frame_inference(
@@ -861,6 +865,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
                 best_masklets=best_masklets,
                 alfa=alfa,
                 num_of_obj_ptrs_in_sam2=num_of_obj_ptrs_in_sam2,
+                memory_temporal_stride_for_eval_r=memory_temporal_stride_for_eval_r,
             )
 
             # import pdb; pdb.set_trace()
@@ -889,7 +894,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
             IoU_prev_curr = obatin_iou(np.where(video_res_masks[0][0].cpu().numpy() > 0, 1, 0), np.where(prev_mask[0][0].cpu().numpy() > 0, 1, 0))
 
 
-            print("IOU PREV CURR: ", IoU_prev_curr)
+            # print("IOU PREV CURR: ", IoU_prev_curr)
             
             if not no_memory_sam2:
                 if not exclude_empty_masks:
@@ -897,11 +902,13 @@ class SAM2VideoRealtimePredictor(SAM2Base):
                 elif np.any(video_res_masks[0][0].cpu().numpy() > 0):
                     output_dict[storage_key][frame_idx] = current_out
 
+                    #is_obj_appearing = torch.any(mask_inputs.flatten(1).float() > 0.0, dim=1)
+
             # import pdb; pdb.set_trace()
 
             object_score = current_out['object_score_logits']
 
-            print("IoU scores for frame ", frame_idx, "are: ", iou_output_scores_RR_added)
+            # print("IoU scores for frame ", frame_idx, "are: ", iou_output_scores_RR_added)
 
             # if IoU_prev_curr == 0:
             #     output_dict[storage_key][frame_idx] = None
@@ -981,7 +988,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
             )
             processing_order = range(start_frame_idx, end_frame_idx + 1)
 
-        print("Order", processing_order)
+        # print("Order", processing_order)
 
         iou_output_scores_RR_added = [10, 10, 10]
         # occlusion_scores = []
@@ -998,13 +1005,13 @@ class SAM2VideoRealtimePredictor(SAM2Base):
                 if clear_non_cond_mem:
                     # clear non-conditioning memory of the surrounding frames
                     self._clear_non_cond_mem_around_input(inference_state, frame_idx)
-                print("Cond frame: ", frame_idx)
-                print("Before propagation: ",  inference_state["output_dict"]['cond_frame_outputs'][0]['maskmem_features'])
+                # print("Cond frame: ", frame_idx)
+                # print("Before propagation: ",  inference_state["output_dict"]['cond_frame_outputs'][0]['maskmem_features'])
             elif frame_idx in consolidated_frame_inds["non_cond_frame_outputs"]:
                 storage_key = "non_cond_frame_outputs"
                 current_out = output_dict[storage_key][frame_idx]
                 pred_masks = current_out["pred_masks"]
-                print("Non cond frame with added pts/mask: ", frame_idx)
+                # print("Non cond frame with added pts/mask: ", frame_idx)
             else:
                 storage_key = "non_cond_frame_outputs"
                 current_out, pred_masks, iou_output_scores_RR_added = self._run_single_frame_inference(
@@ -1022,7 +1029,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
 
                 # occlusion_scores = current_out['object_score_logits']
 
-                print("IoU scores for frame ", frame_idx, "are: ", iou_output_scores_RR_added)
+                # print("IoU scores for frame ", frame_idx, "are: ", iou_output_scores_RR_added)
 
             # Create slices of per-object outputs for subsequent interaction with each
             # individual object after tracking.
@@ -1148,6 +1155,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
         best_masklets=None,
         alfa=0.1,
         num_of_obj_ptrs_in_sam2=16,
+        memory_temporal_stride_for_eval_r=1,
     ):
         """Run tracking on a single frame based on current inputs and previous memory."""
         # Retrieve correct image features
@@ -1180,6 +1188,7 @@ class SAM2VideoRealtimePredictor(SAM2Base):
             video_W=inference_state['video_width'],
             alfa=alfa,
             num_of_obj_ptrs_in_sam2=num_of_obj_ptrs_in_sam2,
+            memory_temporal_stride_for_eval_r=memory_temporal_stride_for_eval_r,
         )
 
 

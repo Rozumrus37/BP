@@ -97,6 +97,8 @@ class SAM2Base(torch.nn.Module):
     ):
         super().__init__()
 
+        # import pdb; pdb.set_trace();
+
         # Part 1: the image backbone
         self.image_encoder = image_encoder
         # Use level 0, 1, 2 for high-res setting, or just level 2 for the default setting
@@ -146,12 +148,13 @@ class SAM2Base(torch.nn.Module):
         self.sigmoid_bias_for_mem_enc = sigmoid_bias_for_mem_enc
         self.binarize_mask_from_pts_for_mem_enc = binarize_mask_from_pts_for_mem_enc
         self.non_overlap_masks_for_mem_enc = non_overlap_masks_for_mem_enc
-        self.memory_temporal_stride_for_eval = memory_temporal_stride_for_eval
+        self.memory_temporal_stride_for_eval = 6 #memory_temporal_stride_for_eval
         # On frames with mask input, whether to directly output the input mask without
         # using a SAM prompt encoder + mask decoder
         self.use_mask_input_as_output_without_sam = use_mask_input_as_output_without_sam
         self.multimask_output_in_sam = multimask_output_in_sam
         self.multimask_min_pt_num = multimask_min_pt_num
+
         self.multimask_max_pt_num = multimask_max_pt_num
         self.multimask_output_for_tracking = multimask_output_for_tracking
         self.use_multimask_token_for_obj_ptr = use_multimask_token_for_obj_ptr
@@ -177,6 +180,10 @@ class SAM2Base(torch.nn.Module):
         self._build_sam_heads()
         self.add_all_frames_to_correct_as_cond = add_all_frames_to_correct_as_cond
         self.max_cond_frames_in_attn = max_cond_frames_in_attn
+
+        # import pdb; pdb.set_trace()
+
+
 
         # Model compilation
         if compile_image_encoder:
@@ -460,7 +467,7 @@ class SAM2Base(torch.nn.Module):
 
                 maximum_IoU_final = max(IoU1_score, max(IoU2_score, IoU3_score))
 
-                print("Iou scores total: ", IoU1_score, IoU2_score, IoU3_score, IoU_with_prev_for_mask1, IoU_with_prev_for_mask2, IoU_with_prev_for_mask3)
+                # print("Iou scores total: ", IoU1_score, IoU2_score, IoU3_score, IoU_with_prev_for_mask1, IoU_with_prev_for_mask2, IoU_with_prev_for_mask3)
 
                 if IoU1_score == maximum_IoU_final:
                     low_res_masks = low_res_masks
@@ -626,6 +633,7 @@ class SAM2Base(torch.nn.Module):
         track_in_reverse=False,  # tracking in reverse time order (for demo usage)
         best_masklets=None,
         num_of_obj_ptrs_in_sam2=16,
+        memory_temporal_stride_for_eval_r=1,
     ):
         """Fuse the current frame's visual feature map with previous memory."""
         B = current_vision_feats[-1].size(1)  # batch size on this frame
@@ -659,7 +667,7 @@ class SAM2Base(torch.nn.Module):
             # the earliest one has t_pos=1 and the latest one has t_pos=self.num_maskmem-1
             # We also allow taking the memory frame non-consecutively (with r>1), in which case
             # we take (self.num_maskmem - 2) frames among every r-th frames plus the last frame.
-            r = self.memory_temporal_stride_for_eval
+            r = memory_temporal_stride_for_eval_r #self.memory_temporal_stride_for_eval
 
             step = [16, 14, 12, 10, 8, 4] #[1, 4, 8, 16, 32, 64] #[1, 2, 4, 8, 16, 32]
 
@@ -668,7 +676,10 @@ class SAM2Base(torch.nn.Module):
             # if best_masklets != None:
             #     best_masklets = sorted(best_masklets, key=lambda tup: tup[1], reverse=False)
 
+
+
             for t_pos in range(1, self.num_maskmem): #step
+
                 t_rel = self.num_maskmem - t_pos  # t_pos # how many frames before current frame
                 if t_rel == 1:
                     # for t_rel == 1, we take the last frame (regardless of r)
@@ -703,6 +714,7 @@ class SAM2Base(torch.nn.Module):
                     out = unselected_cond_outputs.get(prev_frame_idx, None)
 
                 t_pos_and_prevs.append((t_pos, out))
+
                
 
                 # t_pos_and_prevs.append((cnt, out))
@@ -735,7 +747,7 @@ class SAM2Base(torch.nn.Module):
                 # print("MAX OB PTRS IN ENCODER: ", self.max_obj_ptrs_in_encoder)
 
                 max_obj_ptrs_in_encoder = num_of_obj_ptrs_in_sam2 #self.max_obj_ptrs_in_encoder #min(num_frames, self.max_obj_ptrs_in_encoder)
-                print("NONONONO: ", num_frames, self.max_obj_ptrs_in_encoder)
+                # print("NONONONO: ", num_frames, self.max_obj_ptrs_in_encoder)
                 # First add those object pointers from selected conditioning frames
                 # (optionally, only include object pointers in the past during evaluation)
                 if not self.training and self.only_obj_ptrs_in_the_past_for_eval:
@@ -806,7 +818,7 @@ class SAM2Base(torch.nn.Module):
         # Step 2: Concatenate the memories and forward through the transformer encoder
         memory = torch.cat(to_cat_memory, dim=0)
         memory_pos_embed = torch.cat(to_cat_memory_pos_embed, dim=0)
-        print("MEMORY IS: ", memory.shape)
+        # print("MEMORY IS: ", memory.shape)
 
         pix_feat_with_mem = self.memory_attention(
             curr=current_vision_feats,
@@ -836,7 +848,7 @@ class SAM2Base(torch.nn.Module):
         # top-level feature, (HW)BC => BCHW
         pix_feat = current_vision_feats[-1].permute(1, 2, 0).view(B, C, H, W)
 
-        print("Encoded memory: ", B, C, H, W)
+        # print("Encoded memory: ", B, C, H, W)
 
         if self.non_overlap_masks_for_mem_enc and not self.training:
             # optionally, apply non-overlapping constraints to the masks (it's applied
@@ -891,6 +903,7 @@ class SAM2Base(torch.nn.Module):
         video_W=None,
         alfa=0,
         num_of_obj_ptrs_in_sam2=16,
+        memory_temporal_stride_for_eval_r=1,
     ):
 
         # import pdb; pdb.set_trace()
@@ -926,6 +939,7 @@ class SAM2Base(torch.nn.Module):
                 track_in_reverse=track_in_reverse,
                 best_masklets=best_masklets,
                 num_of_obj_ptrs_in_sam2=num_of_obj_ptrs_in_sam2,
+                memory_temporal_stride_for_eval_r=memory_temporal_stride_for_eval_r,
             )
         
 
@@ -977,7 +991,7 @@ class SAM2Base(torch.nn.Module):
         if run_mem_encoder and self.num_maskmem > 0:
             high_res_masks_for_mem_enc = high_res_masks # current_out["pred_masks_high_res"] 
 
-            print("track new step is here: ", pix_feat_with_mem.shape)
+            # print("track new step is here: ", pix_feat_with_mem.shape)
 
             maskmem_features, maskmem_pos_enc = self._encode_new_memory(
                 current_vision_feats=current_vision_feats, #[pix_feat_with_mem.permute(2, 3, 0, 1).reshape(4096, 1, 256)]

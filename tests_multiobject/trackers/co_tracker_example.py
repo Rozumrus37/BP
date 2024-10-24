@@ -40,6 +40,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+
     # if not os.path.isfile(args.video_path):
     #     raise ValueError("Video file does not exist")
 
@@ -63,41 +64,49 @@ if __name__ == "__main__":
             .permute(0, 3, 1, 2)[None]
         )  # (1, T, 3, H, W)
 
+        
+
         queries = torch.tensor([
-            [0., 539., 209.],
-            [0., 553.,208.],
-            [0., 536.,218.],
-            [0., 547.,214.]
+            [0., 314., 290.],
+            [0., 314., 297.],
+            [0., 316., 282.]
 
-            # [0., 721., 245.],
-            # [0., 728., 246.],
-            # [0., 717., 251.]
+            # [0., 433., 277.],
+            # [0., 433., 285.],
+            # [0., 439.,290.],
+            # [0., 442., 282.],
+            # [0., 434., 271.]
 
-            # [0., 437., 287.],
-            # [0., 436., 275.],
-            # [0., 429., 279.],
 
-            # [0.,566.,282.],
-            # [0.,555.,266.],
-            # [0.,568.,291.],
-            # [0.,557.,291.],
-            # [0.,560.,274.],
+            # [0., 433., 277.] # hand2
 
-            # [0,245,58],
-            # [0,246,85],
-            # [0,269,90],
-            # [0,260,102],
-            # [0,241,101],
-            # [0,265,75],
-            # [0,224,74],
-            # [0,226,93],
-            # [0,278,103],
-            # [0., 233.0, 69.0],
-            # [0., 250.0, 87.0],  # point tracked from the first frame
-            # [10., 600., 500.], # frame number 10
-            # [20., 750., 600.], # ...
-            # [30., 900., 200.]
+            # [0., 356., 122.], zerbafish1
+            # # [0., 377., 120.],
+            # # [0., 400., 120.]
+
+
+
+            # [0., 136., 518.], # ants1
+            # [0., 139., 506.],
+            # [0., 143., 476.]
+
+            # [0., 723., 241.], conductinon1 
+            # [0., 724., 248.],
+            # [0., 717., 244.]
+
+            # [0., 539., 201.], #drone1
+            # [0., 545., 207.],
+            # [0., 555., 214.]
+
+
+            # [0., 628., 232.]
+            # [0., 625.,218.],
+            # [0., 611.,216.],
+            # [0., 595.,212.]
+
         ], device='cuda')
+
+
 
         return model(
             video_chunk,
@@ -110,7 +119,7 @@ if __name__ == "__main__":
     # Iterating over video frames, processing one window at a time:
     is_first_step = True
 
-    video_path = "/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/rabbit/color"
+    video_path = "/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/marathon/color"
 
     frame_names = [
         p for p in os.listdir(video_path)
@@ -125,16 +134,23 @@ if __name__ == "__main__":
     cnt = 0
     print("Model step: ", model.step)
 
+    model.step = 8
+
     for i, frame in enumerate(frame_names):
         # print(model.step)
         if i % model.step == 0 and i != 0:
             # print(window_frames, is_first_step)
+            # import pdb; pdb.set_trace();
+
             pred_tracks, pred_visibility = _process_step(
                 window_frames,
                 is_first_step,
                 grid_size=10,#args.grid_size,
                 grid_query_frame=0,#args.grid_query_frame,
             )
+
+
+
             is_first_step = False
         window_frames.append(iio.imread(os.path.join(video_path, frame)))
     # Processing the final video frames in case video length is not a multiple of model.step
@@ -148,7 +164,7 @@ if __name__ == "__main__":
     print("Tracks are computed")
 
     # save a video with predicted tracks
-    seq_name = "rabbit"
+    
     video = torch.tensor(np.stack(window_frames), device=DEFAULT_DEVICE).permute(
         0, 3, 1, 2
     )[None]
