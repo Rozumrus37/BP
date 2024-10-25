@@ -156,9 +156,11 @@ class SAM2VideoPredictor(SAM2Base):
         self.image_width_fr, self.image_height_fr, self.image_fr = video_width_fr, video_height_fr, img_pil_full_res
 
         if bbox != None:
+            # print(bbox, video_width_fr, video_height_fr)
             img_pil = img_pil_full_res.crop(bbox)
+            # print(img_pil.size)
 
-            img_pil.save('init_cropped_marathon.png')
+            img_pil.save('image_pil_saved.png')
         else:
             img_pil = img_pil_full_res
 

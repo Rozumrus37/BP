@@ -11,12 +11,12 @@ from utilities_eval import *
 import argparse
 from tqdm import tqdm
 
-# torch.autocast(device_type="cuda", dtype=torch.float16).__enter__()
+torch.autocast(device_type="cuda", dtype=torch.bfloat16).__enter__()
 
-# if torch.cuda.get_device_properties(0).major >= 8:
-#     # turn on tfloat32 for Ampere GPUs (https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices)
-#     torch.backends.cuda.matmul.allow_tf32 = False 
-#     torch.backends.cudnn.allow_tf32 = False
+if torch.cuda.get_device_properties(0).major >= 8:
+    # turn on tfloat32 for Ampere GPUs (https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices)
+    torch.backends.cuda.matmul.allow_tf32 = False 
+    torch.backends.cudnn.allow_tf32 = False
 
 SEQ = ['agility', 'animal', 'ants1', 'bag', 'ball2', 'ball3', 'basketball', 'birds1', 'birds2', 'bolt1', 'book', 'bubble', 'butterfly', 'car1', 'conduction1', 'crabs1', 'dinosaur', 'diver', 'drone1', 'drone_across', 'fernando', 'fish1', 'fish2', 'frisbee', 'graduate', 'gymnastics1', 'gymnastics2', 'gymnastics3', 'hand', 'hand2', 'handball1', 'handball2', 'helicopter', 'iceskater1', 'iceskater2', 'kangaroo', 'lamb', 'leaves', 'marathon', 'matrix', 'monkey', 'motocross1', 'polo', 'rabbit', 'rabbit2', 'rowing', 'shaking', 'singer2', 'singer3', 'snake', 'soccer1', 'soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper', 'zebrafish1']
 
@@ -30,17 +30,18 @@ def parse_args():
     parser.add_argument('--vis_out', action="store_true")
     parser.add_argument('--memory_stride', type=int, default=1)
     parser.add_argument('--sequences')
-    parser.add_argument('--crop', action="store_true")
+    parser.add_argument('--crop_gt', action="store_true")
     parser.add_argument('--factor', type=int, default=1)
+    parser.add_argument('--use_prev_box', action="store_true")
 
     args = parser.parse_args()
 
     if args.sequences != None:
         args.sequences = args.sequences.split(",")
 
-    return args.exclude_empty_masks, args.vis_out, args.memory_stride, args.crop, args.factor, args.sequences
+    return args.exclude_empty_masks, args.vis_out, args.memory_stride, args.crop_gt, args.factor, args.use_prev_box, args.sequences
 
-exclude_empty_masks, vis_out, memory_stride, crop, factor, sequences = parse_args()
+exclude_empty_masks, vis_out, memory_stride, crop_gt, factor, use_prev_box, sequences = parse_args()
 
 if sequences != None:
     SEQ = sequences
@@ -51,6 +52,7 @@ def run_eval(seq):
     model_cfg = "configs/sam2.1/sam2.1_hiera_l.yaml" #"sam2_hiera_l.yaml" #"configs/sam2/sam2_hiera_l.yaml"
     predictor = build_sam2_video_predictor(model_cfg, sam2_checkpoint, device='cuda')
     video_dir = "/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/" + seq + "/color"
+    output_dir = "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + str(seq)
     frame_names = load_frames(video_dir)
     inference_state = predictor.init_state()
 
@@ -58,7 +60,7 @@ def run_eval(seq):
     H, W = mask_first_frame.shape 
     bbox = None
 
-    if crop:
+    if crop_gt or use_prev_box:
         min_row, min_col, max_row, max_col = get_bounding_box(mask_first_frame)
 
         print(f"Number of occupied pixels initially: ", abs(min_col-max_col) * abs(min_row-max_row) * 100.0 / (H*W))
@@ -83,31 +85,47 @@ def run_eval(seq):
     mask_full_size = get_full_size_mask(out_mask_logits, bbox, image_path, 0, seq)
     
     if vis_out:
-        vis(mask_full_size, [1], 0, os.path.join(video_dir, frame_names[0]), "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + seq)
+        if bbox != None:
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
+
+            img_pil = Image.open(image_path)  
+            img_pil = img_pil.crop(bbox)
+            img_pil.save(output_dir + '/init_cropped_image.png')
+
+        vis(mask_full_size, [1], 0, os.path.join(video_dir, frame_names[0]), output_dir)
 
     masks_all = []
 
-    # min_col, min_row, max_col, max_row = increase_bbox_area(H, W, min_col, min_row, max_col, max_row, factor=factor)
-
-    if crop:
+    if use_prev_box:
         prev_bbox = (min_row, min_col, max_row, max_col) # bbox
 
-
-
-    for out_frame_idx in range(1, len(frame_names)):
+    for out_frame_idx in tqdm(range(1, len(frame_names))):
         image_path = os.path.join(video_dir, frame_names[out_frame_idx])
 
-        mask_curr = get_nth_mask(seq, out_frame_idx)
-
         bbox = None
-        if crop:
+
+        if use_prev_box:
             bbox = prev_bbox
-            # bbox = get_bounding_box(mask_curr)
+
+        if crop_gt:
+            mask_curr = get_nth_mask(seq, out_frame_idx)
+            bbox = get_bounding_box(mask_curr)
      
-            # if bbox != None:
-            #     min_row, min_col, max_row, max_col = bbox 
-            #     min_col, min_row, max_col, max_row = increase_bbox_area(H, W, min_col, min_row, max_col, max_row, factor)
-            #     bbox = min_row, min_col, max_row, max_col 
+            if bbox != None:
+                min_row, min_col, max_row, max_col = bbox 
+                min_col, min_row, max_col, max_row = increase_bbox_area(H, W, min_col, min_row, max_col, max_row, factor)
+                bbox = min_row, min_col, max_row, max_col 
+
+            # if out_frame_idx == 10:
+            #     if not os.path.exists(output_dir):
+            #         os.makedirs(output_dir)
+
+            #     img_pil = Image.open(image_path)  
+            #     img_pil = img_pil.crop(bbox)
+
+            #     img_pil.save(output_dir + '/10_frame_mask.png')
+
 
         predictor.load_first_frame(inference_state, image_path, frame_idx=out_frame_idx, bbox=bbox)
 
@@ -120,14 +138,24 @@ def run_eval(seq):
         if vis_out:
             vis(mask_full_size, out_obj_ids, out_frame_idx, image_path, "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + seq)
 
-        if crop:
+        if use_prev_box:
             bbox = get_bounding_box(mask_full_size)
+
             if bbox != None:
                 min_row, min_col, max_row, max_col = bbox
                 min_col, min_row, max_col, max_row = increase_bbox_area(H, W, min_col, min_row, max_col, max_row, factor)
                 prev_bbox = (min_row, min_col, max_row, max_col)
 
-        # import pdb; pdb.set_trace();
+                # if out_frame_idx == 10:
+                #     if not os.path.exists(output_dir):
+                #         os.makedirs(output_dir)
+
+                #     img_pil = Image.open(image_path)  
+                #     img_pil = img_pil.crop(prev_bbox)
+
+                #     img_pil.save(output_dir + '/10_frame_mask.png')
+            
+
 
     return [mask_first_frame] + masks_all
 
