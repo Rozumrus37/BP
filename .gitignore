@@ -17,5 +17,6 @@ tests_multiobject/trackers/.*
 *.pt
 *.png
 *.mp4
+.old_git
 !.gitignore
 
