@@ -160,7 +160,7 @@ class SAM2VideoPredictor(SAM2Base):
             img_pil = img_pil_full_res.crop(bbox)
             # print(img_pil.size)
 
-            img_pil.save('image_pil_saved.png')
+            # img_pil.save('image_pil_saved.png')
         else:
             img_pil = img_pil_full_res
 

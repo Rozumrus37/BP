@@ -42,10 +42,45 @@ def increase_bbox_area(H, W, min_row, min_col, max_row, max_col, factor=2):
     return int(new_min_row), int(new_min_col), int(new_max_row), int(new_max_col)
 
 
-def get_full_size_mask(out_mask_logits, bbox, image, ann_frame_idx, seq):
-    image = Image.open(image)
-    mask_curr = get_nth_mask(seq, ann_frame_idx)
-    H, W = mask_curr.shape
+def increase_bbox_to_square(H, W, min_row, min_col, max_row, max_col, factor=2):
+    # Calculate the center of the original rectangle
+    center_row = (min_row + max_row) / 2
+    center_col = (min_col + max_col) / 2
+
+    # Calculate the current width and height
+    height = max_row - min_row
+    width = max_col - min_col
+
+    # Double the width and height by multiplying by sqrt(2)
+    new_height = factor*max(height, width) #height * scale_factor
+    new_width = factor*max(height, width) # width * scale_factor
+
+    # Calculate new coordinates by expanding around the center
+    new_min_row = center_row - new_height / 2
+    new_min_col = center_col - new_width / 2
+    new_max_row = center_row + new_height / 2
+    new_max_col = center_col + new_width / 2
+
+
+     # Apply boundary constraints to keep the box within the image
+    if new_min_row < 0:
+        new_min_row = 0
+    if new_min_col < 0:
+        new_min_col = 0
+    if new_max_row > H:
+        new_max_row = H-1
+    if new_max_col > W:
+        new_max_col = W-1
+
+
+    return int(new_min_row), int(new_min_col), int(new_max_row), int(new_max_col)
+
+
+
+def get_full_size_mask(out_mask_logits, bbox, image, ann_frame_idx, H, W):
+    # image = Image.open(image)
+    # mask_curr = get_nth_mask(seq, ann_frame_idx)
+    # H, W = mask_curr.shape
 
     if bbox != None:
         min_row, min_col, max_row, max_col = bbox
