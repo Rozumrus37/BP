@@ -112,7 +112,7 @@ def load_frames(video_dir):
 
     frame_names.sort(key=lambda p: int(os.path.splitext(p)[0]))
 
-    return frame_names
+    return frame_names #['00000001.jpg'] + frame_names
 
 
 def show_mask(mask, ax, obj_id=None, random_color=False, ann_frame_idx=0, to_save_path=None):

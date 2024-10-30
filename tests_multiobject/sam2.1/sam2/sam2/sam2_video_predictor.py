@@ -158,6 +158,8 @@ class SAM2VideoPredictor(SAM2Base):
         if bbox != None:
             # print(bbox, video_width_fr, video_height_fr)
             img_pil = img_pil_full_res.crop(bbox)
+            # print("YES")
+            # print(img_pil.size)
             # print(img_pil.size)
 
             # img_pil.save('image_pil_saved.png')
@@ -165,6 +167,9 @@ class SAM2VideoPredictor(SAM2Base):
             img_pil = img_pil_full_res
 
         img_np = np.array(img_pil.convert("RGB").resize((image_size, image_size)))
+
+      
+
         if img_np.dtype == np.uint8:  # np.uint8 is expected for JPEG images
             img_np = img_np / 255.0
         else:
