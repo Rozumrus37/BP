@@ -10,6 +10,8 @@ from utilities_eval import *
 
 import argparse
 from tqdm import tqdm
+from sam2.build_sam import build_sam2
+from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 torch.autocast(device_type="cuda", dtype=torch.bfloat16).__enter__()
 
@@ -61,17 +63,7 @@ def run_eval(seq):
     H, W = mask_first_frame.shape 
     bbox = None
 
-    if crop_gt or use_prev_box:
-        min_row, min_col, max_row, max_col = get_bounding_box(mask_first_frame)
-
-        if use_square_box:
-            min_col, min_row, max_col, max_row = increase_bbox_to_square(H, W, min_col, min_row, max_col, max_row, factor=factor)
-        else:
-            min_col, min_row, max_col, max_row = increase_bbox_area(H, W, min_col, min_row, max_col, max_row, factor=factor)
-
-        bbox = (min_row, min_col, max_row, max_col)
-        mask_first_frame = mask_first_frame[min_col:max_col, min_row:max_row]
-
+    
     image_path = os.path.join(video_dir, '00000001.jpg')
 
 
@@ -150,7 +142,40 @@ def run_eval(seq):
             exclude_empty_masks=exclude_empty_masks, memory_stride=memory_stride, frame_idx=out_frame_idx)
 
         mask_full_size = get_full_size_mask(out_mask_logits, bbox, image_path, out_frame_idx, H, W)
+        bbox = get_bounding_box(mask_full_size)
+
+        if bbox != None:
+            print("Before bbox: ", obatin_iou(mask_full_size, get_nth_mask(seq, out_frame_idx)))
+            checkpoint = "./checkpoints/sam2.1_hiera_large.pt"
+            model_cfg = "configs/sam2.1/sam2.1_hiera_l.yaml"
+            predictor2 = SAM2ImagePredictor(build_sam2(model_cfg, checkpoint))
+            input_box = np.array([bbox[0], bbox[1], bbox[2], bbox[3]])
+
+            image = Image.open(image_path)
+            image = np.array(image.convert("RGB"))
+
+            ones_indices = np.argwhere(mask_full_size == 1)
+            zeros_indices = np.argwhere(mask_full_size == 0)
+
+            # Select 5 points from ones and 10 from zeros
+            ones_points = ones_indices[np.random.choice(len(ones_indices), 1, replace=False)]
+            zeros_points = zeros_indices[np.random.choice(len(zeros_indices), 5, replace=False)]
+
+            # Convert points into desired format
+            image2_pts = np.array([[[y, x]] for x, y in np.vstack((ones_points, zeros_points))])
+            image2_labels = np.array([[1]] * len(ones_points) + [[0]] * len(zeros_points))
+
+
+            with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
+                predictor2.set_image(image)
+                masks, _, _ = predictor2.predict(point_coords=image2_pts, point_labels=image2_labels)
+
+            # import pdb; pdb.set_trace()
+            print("AFter bbox: ", obatin_iou(masks[0], get_nth_mask(seq, out_frame_idx)))
+        
         masks_all.append(mask_full_size)
+
+
 
         if vis_out:
             vis(mask_full_size, out_obj_ids, out_frame_idx, image_path, "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + seq)

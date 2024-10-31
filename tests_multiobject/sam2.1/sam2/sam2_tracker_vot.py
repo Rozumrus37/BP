@@ -38,6 +38,9 @@ class SAM2Tracker(object):
         self.predictor = build_sam2_video_predictor(model_cfg, sam2_checkpoint) # build_sam2_camera_predictor
 
         self.inference_state = self.predictor.init_state()
+        self.no_mask_set_full_image = True
+        self.memory_stride = 7
+        self.factor = 100
 
 
 
@@ -53,15 +56,15 @@ class SAM2Tracker(object):
         mask = self.pad_mask_to_image_size(mask, (iimage.shape[0], iimage.shape[1]))
         
 
-        # min_row, min_col, max_row, max_col = get_bounding_box(mask)
+        min_row, min_col, max_row, max_col = get_bounding_box(mask)
 
 
-        # min_col, min_row, max_col, max_row = increase_bbox_area(self.H, self.W, min_col, min_row, max_col, max_row, factor=100)
+        min_col, min_row, max_col, max_row = increase_bbox_area(self.H, self.W, min_col, min_row, max_col, max_row, factor=100)
 
-        # bbox = (min_row, min_col, max_row, max_col)
-        # mask = mask[min_col:max_col, min_row:max_row]
+        bbox = (min_row, min_col, max_row, max_col)
+        mask = mask[min_col:max_col, min_row:max_row]
 
-        self.predictor.load_first_frame(self.inference_state, image, bbox=None)
+        self.predictor.load_first_frame(self.inference_state, image, bbox=bbox)
         _, _, out_mask_logits = self.predictor.add_new_mask(
             inference_state=self.inference_state,
             frame_idx=0,
@@ -69,7 +72,7 @@ class SAM2Tracker(object):
             mask=np.array(mask),
         )
 
-        # self.prev_bbox = (min_row, min_col, max_row, max_col) # bbox
+        self.prev_bbox = (min_row, min_col, max_row, max_col) # bbox
 
 
         #self.vis_segm(image, (out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0], "/home.stud/rozumrus/BP/tests_multiobject/out_sam2_25maskletN/" + str(cnt) + "init.png")
@@ -92,14 +95,17 @@ class SAM2Tracker(object):
         #out_obj_ids, out_mask_logits = self.predictor.track(image)
         # self.predictor.load_first_frame(self.inference_state, image, frame_idx=c)
 
-        # bbox = self.prev_bbox
+        bbox = self.prev_bbox
 
-        self.predictor.load_first_frame(self.inference_state, image, frame_idx=c, bbox=None)
+
+
+
+        self.predictor.load_first_frame(self.inference_state, image, frame_idx=c, bbox=bbox)
 
         out_frame_idx, out_obj_ids, out_mask_logits = self.predictor.track(self.inference_state, 
-            exclude_empty_masks=False, memory_stride=1, frame_idx=c)
+            exclude_empty_masks=True, memory_stride=7, frame_idx=c)
 
-        # mask_full_size = get_full_size_mask(out_mask_logits, bbox, image, c, self.H, self.W)
+        mask_full_size = get_full_size_mask(out_mask_logits, bbox, image, c, self.H, self.W)
 
 
 
@@ -110,12 +116,31 @@ class SAM2Tracker(object):
         #     min_col, min_row, max_col, max_row = increase_bbox_area(self.H, self.W, min_col, min_row, max_col, max_row, 100)
         #     self.prev_bbox = (min_row, min_col, max_row, max_col)
 
+        bbox = get_bounding_box(mask_full_size)
+
+        if bbox != None:
+            min_row, min_col, max_row, max_col = bbox
+            
+            min_col, min_row, max_col, max_row = increase_bbox_area(self.H, self.W, min_col, min_row, max_col, max_row, factor=100)
+
+            if min_row-max_row != 0 and min_col-max_col != 0:
+                self.prev_bbox = (min_row, min_col, max_row, max_col)
+                
+        elif self.no_mask_set_full_image:
+            min_row, min_col, max_row, max_col = self.prev_bbox
+            
+            min_col, min_row, max_col, max_row = increase_bbox_area(self.H, self.W, min_col, min_row, max_col, max_row, factor=2)
+
+            if min_row-max_row != 0 and min_col-max_col != 0:
+                self.prev_bbox = (min_row, min_col, max_row, max_col)
+                    
+
  
 
         #self.vis_segm(image, (out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0], "/home.stud/rozumrus/BP/tests_multiobject/out_sam2_25maskletN/" + str(c) + "_sam2_out.png")
 
         # print(mask_full_size.shape, self.H, self.W)
-        return (out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0] #np.array(mask_full_size).astype(np.uint8)
+        return np.array(mask_full_size).astype(np.uint8) #(out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0] #
         
         #return (out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0]
 
