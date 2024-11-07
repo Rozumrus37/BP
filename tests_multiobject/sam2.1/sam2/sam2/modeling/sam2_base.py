@@ -503,7 +503,8 @@ class SAM2Base(torch.nn.Module):
         feat_sizes,
         output_dict,
         num_frames,
-        track_in_reverse=False,  # tracking in reverse time order (for demo usage)
+        track_in_reverse=False, # tracking in reverse time order (for demo usage)
+        double_memory_bank=False, 
     ):
         """Fuse the current frame's visual feature map with previous memory."""
         B = current_vision_feats[-1].size(1)  # batch size on this frame
@@ -530,42 +531,93 @@ class SAM2Base(torch.nn.Module):
             selected_cond_outputs, unselected_cond_outputs = select_closest_cond_frames(
                 frame_idx, cond_outputs, self.max_cond_frames_in_attn
             )
+
             t_pos_and_prevs = [(0, out) for out in selected_cond_outputs.values()]
-            # Add last (self.num_maskmem - 1) frames before current frame for non-conditioning memory
-            # the earliest one has t_pos=1 and the latest one has t_pos=self.num_maskmem-1
-            # We also allow taking the memory frame non-consecutively (with stride>1), in which case
-            # we take (self.num_maskmem - 2) frames among every stride-th frames plus the last frame.
-            stride = 1 if self.training else self.memory_temporal_stride_for_eval
-            for t_pos in range(1, self.num_maskmem):
-                t_rel = self.num_maskmem - t_pos  # how many frames before current frame
-                if t_rel == 1:
-                    # for t_rel == 1, we take the last frame (regardless of r)
-                    if not track_in_reverse:
-                        # the frame immediately before this frame (i.e. frame_idx - 1)
-                        prev_frame_idx = frame_idx - t_rel
+
+            if double_memory_bank:
+                # Add last (self.num_maskmem - 1) frames before current frame for non-conditioning memory
+                # the earliest one has t_pos=1 and the latest one has t_pos=self.num_maskmem-1
+                # We also allow taking the memory frame non-consecutively (with stride>1), in which case
+                # we take (self.num_maskmem - 2) frames among every stride-th frames plus the last frame.
+                stride = 1 if self.training else 2*self.memory_temporal_stride_for_eval
+                for t_pos in range(1, self.num_maskmem):
+                    t_rel = self.num_maskmem - t_pos  # how many frames before current frame
+                    if t_rel == 1:
+                        # for t_rel == 1, we take the last frame (regardless of r)
+                        if not track_in_reverse:
+                            # the frame immediately before this frame (i.e. frame_idx - 1)
+                            prev_frame_idx = frame_idx - 2*t_rel
+                        else:
+                            # the frame immediately after this frame (i.e. frame_idx + 1)
+                            prev_frame_idx = frame_idx + 2*t_rel
                     else:
-                        # the frame immediately after this frame (i.e. frame_idx + 1)
-                        prev_frame_idx = frame_idx + t_rel
-                else:
-                    # for t_rel >= 2, we take the memory frame from every r-th frames
-                    if not track_in_reverse:
-                        # first find the nearest frame among every r-th frames before this frame
-                        # for r=1, this would be (frame_idx - 2)
-                        prev_frame_idx = ((frame_idx - 2) // stride) * stride
-                        # then seek further among every r-th frames
-                        prev_frame_idx = prev_frame_idx - (t_rel - 2) * stride
+                        # for t_rel >= 2, we take the memory frame from every r-th frames
+                        if not track_in_reverse:
+                            # first find the nearest frame among every r-th frames before this frame
+                            # for r=1, this would be (frame_idx - 2)
+                            prev_frame_idx = ((frame_idx - 4) // stride) * stride
+                            # then seek further among every r-th frames
+                            prev_frame_idx = prev_frame_idx - (t_rel - 2) * stride
+                        else:
+                            # first find the nearest frame among every r-th frames after this frame
+                            # for r=1, this would be (frame_idx + 2)
+                            prev_frame_idx = -(-(frame_idx + 4) // stride) * stride
+                            # then seek further among every r-th frames
+                            prev_frame_idx = prev_frame_idx + (t_rel - 2) * stride
+                    out = output_dict["non_cond_frame_outputs"].get(prev_frame_idx, None)
+
+                    if out is None:
+                        # If an unselected conditioning frame is among the last (self.num_maskmem - 1)
+                        # frames, we still attend to it as if it's a non-conditioning frame.
+                        out = unselected_cond_outputs.get(prev_frame_idx, None)
+
+                    t_pos_and_prevs.append((t_pos, out))
+
+                    out = output_dict["non_cond_frame_outputs"].get(prev_frame_idx+1, None)
+                    if out is None:
+                        # If an unselected conditioning frame is among the last (self.num_maskmem - 1)
+                        # frames, we still attend to it as if it's a non-conditioning frame.
+                        out = unselected_cond_outputs.get(prev_frame_idx+1, None)
+
+                    t_pos_and_prevs.append((t_pos, out))
+            else:
+                # Add last (self.num_maskmem - 1) frames before current frame for non-conditioning memory
+                # the earliest one has t_pos=1 and the latest one has t_pos=self.num_maskmem-1
+                # We also allow taking the memory frame non-consecutively (with stride>1), in which case
+                # we take (self.num_maskmem - 2) frames among every stride-th frames plus the last frame.
+                stride = 1 if self.training else self.memory_temporal_stride_for_eval
+                for t_pos in range(1, self.num_maskmem):
+                    t_rel = self.num_maskmem - t_pos  # how many frames before current frame
+                    if t_rel == 1:
+                        # for t_rel == 1, we take the last frame (regardless of r)
+                        if not track_in_reverse:
+                            # the frame immediately before this frame (i.e. frame_idx - 1)
+                            prev_frame_idx = frame_idx - t_rel
+                        else:
+                            # the frame immediately after this frame (i.e. frame_idx + 1)
+                            prev_frame_idx = frame_idx + t_rel
                     else:
-                        # first find the nearest frame among every r-th frames after this frame
-                        # for r=1, this would be (frame_idx + 2)
-                        prev_frame_idx = -(-(frame_idx + 2) // stride) * stride
-                        # then seek further among every r-th frames
-                        prev_frame_idx = prev_frame_idx + (t_rel - 2) * stride
-                out = output_dict["non_cond_frame_outputs"].get(prev_frame_idx, None)
-                if out is None:
-                    # If an unselected conditioning frame is among the last (self.num_maskmem - 1)
-                    # frames, we still attend to it as if it's a non-conditioning frame.
-                    out = unselected_cond_outputs.get(prev_frame_idx, None)
-                t_pos_and_prevs.append((t_pos, out))
+                        # for t_rel >= 2, we take the memory frame from every r-th frames
+                        if not track_in_reverse:
+                            # first find the nearest frame among every r-th frames before this frame
+                            # for r=1, this would be (frame_idx - 2)
+                            prev_frame_idx = ((frame_idx - 2) // stride) * stride
+                            # then seek further among every r-th frames
+                            prev_frame_idx = prev_frame_idx - (t_rel - 2) * stride
+                        else:
+                            # first find the nearest frame among every r-th frames after this frame
+                            # for r=1, this would be (frame_idx + 2)
+                            prev_frame_idx = -(-(frame_idx + 2) // stride) * stride
+                            # then seek further among every r-th frames
+                            prev_frame_idx = prev_frame_idx + (t_rel - 2) * stride
+                    out = output_dict["non_cond_frame_outputs"].get(prev_frame_idx, None)
+                    if out is None:
+                        # If an unselected conditioning frame is among the last (self.num_maskmem - 1)
+                        # frames, we still attend to it as if it's a non-conditioning frame.
+                        out = unselected_cond_outputs.get(prev_frame_idx, None)
+                    t_pos_and_prevs.append((t_pos, out))
+
+
 
             for t_pos, prev in t_pos_and_prevs:
                 if prev is None:
@@ -582,6 +634,9 @@ class SAM2Base(torch.nn.Module):
                     maskmem_enc + self.maskmem_tpos_enc[self.num_maskmem - t_pos - 1]
                 )
                 to_cat_memory_pos_embed.append(maskmem_enc)
+
+
+            # print(len(to_cat_memory_pos_embed), frame_idx)
 
             # Construct the list of past object pointers
             if self.use_obj_ptrs_in_encoder:
@@ -736,6 +791,7 @@ class SAM2Base(torch.nn.Module):
         num_frames,
         track_in_reverse,
         prev_sam_mask_logits,
+        double_memory_bank,
     ):
         current_out = {"point_inputs": point_inputs, "mask_inputs": mask_inputs}
         # High-resolution feature maps for the SAM head, reshape (HW)BC => BCHW
@@ -765,6 +821,7 @@ class SAM2Base(torch.nn.Module):
                 output_dict=output_dict,
                 num_frames=num_frames,
                 track_in_reverse=track_in_reverse,
+                double_memory_bank=double_memory_bank,
             )
             # apply SAM-style segmentation head
             # here we might feed previously predicted low-res SAM mask logits into the SAM mask decoder,
@@ -830,6 +887,7 @@ class SAM2Base(torch.nn.Module):
         # The previously predicted SAM mask logits (which can be fed together with new clicks in demo).
         prev_sam_mask_logits=None,
         memory_stride=1,
+        double_memory_bank=False,
     ):  
         self.memory_temporal_stride_for_eval = memory_stride
 
@@ -845,6 +903,7 @@ class SAM2Base(torch.nn.Module):
             num_frames,
             track_in_reverse,
             prev_sam_mask_logits,
+            double_memory_bank,
         )
 
         (

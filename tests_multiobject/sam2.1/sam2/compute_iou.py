@@ -49,7 +49,7 @@ def obatin_iou(array1, array2):
     intersection = np.logical_and(array1_bool, array2_bool)
     union = np.logical_or(array1_bool, array2_bool)
     if np.sum(union) == 0:
-        return 0 
+        return 1.0
     iou = np.sum(intersection) / np.sum(union)
     
     return iou

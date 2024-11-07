@@ -232,8 +232,8 @@ for seq in SEQ:
 
     print(f"IoU fpr {seq} is: {iou_curr}\n")
 
-    for iou_i in all_ious:
-        print(f"{iou_i}")
+    # for iou_i in all_ious:
+    #     print(f"{iou_i}")
 
     print("----------\n")
     # print("All ious:\n")

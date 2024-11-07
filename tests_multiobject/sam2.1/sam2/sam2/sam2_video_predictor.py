@@ -133,10 +133,14 @@ class SAM2VideoPredictor(SAM2Base):
         if not ("images" in inference_state):
             inference_state["images"] = [img]
         else:
+           
             if frame_idx < len(inference_state["images"]):
+                # print("YES")
                 inference_state["images"][frame_idx] = img
             else:
                 inference_state["images"].append(img)
+
+            # print(frame_idx, len(inference_state["images"]))
 
         inference_state["num_frames"] = len(img)
 
@@ -168,7 +172,7 @@ class SAM2VideoPredictor(SAM2Base):
 
         img_np = np.array(img_pil.convert("RGB").resize((image_size, image_size)))
 
-      
+        # print("np shale", img_np.size[0], img_np.size[1])
 
         if img_np.dtype == np.uint8:  # np.uint8 is expected for JPEG images
             img_np = img_np / 255.0
@@ -743,7 +747,11 @@ class SAM2VideoPredictor(SAM2Base):
         exclude_empty_masks=False,
         memory_stride=1,
         frame_idx=0,
+        prev_out=None,
+        double_memory_bank=False,
     ):  
+
+        # out_frame_idx = frame_idx
 
         self.memory_temporal_stride_for_eval = memory_stride
 
@@ -761,13 +769,13 @@ class SAM2VideoPredictor(SAM2Base):
             self.clear_non_cond_mem_for_multi_obj or batch_size <= 1
         )
 
-        # set start index, end index, and processing order
-        if start_frame_idx is None:
-            # default: start from the earliest frame with input points
-            start_frame_idx = min(output_dict["cond_frame_outputs"])
-        if max_frame_num_to_track is None:
-            # default: track all the frames in the video
-            max_frame_num_to_track = num_frames
+        # # set start index, end index, and processing order
+        # if start_frame_idx is None:
+        #     # default: start from the earliest frame with input points
+        #     start_frame_idx = min(output_dict["cond_frame_outputs"])
+        # if max_frame_num_to_track is None:
+        #     # default: track all the frames in the video
+        #     max_frame_num_to_track = num_frames
        
 
   
@@ -799,18 +807,37 @@ class SAM2VideoPredictor(SAM2Base):
                 reverse=reverse,
                 run_mem_encoder=True,
                 memory_stride=memory_stride,
+                double_memory_bank=double_memory_bank,
             )
 
             _, video_res_masks = self._get_orig_video_res_output(
                 inference_state, pred_masks
             )
 
-            if exclude_empty_masks:
-                if np.any(video_res_masks[0][0].cpu().numpy() > 0):
-                    output_dict[storage_key][frame_idx] = current_out
-            else:
-                output_dict[storage_key][frame_idx] = current_out
+            out_curr = None 
 
+            if double_memory_bank:
+
+                if exclude_empty_masks:
+                    if np.any(video_res_masks[0][0].cpu().numpy() > 0):
+                        out_curr = current_out
+                else:
+                    out_curr = current_out
+
+                if prev_out != None:
+                    output_dict[storage_key][frame_idx] = prev_out
+
+                    if exclude_empty_masks:
+                        if np.any(video_res_masks[0][0].cpu().numpy() > 0):
+                            output_dict[storage_key][frame_idx+1] = current_out
+                    else:
+                        output_dict[storage_key][frame_idx+1] = current_out
+            else:
+                if exclude_empty_masks:
+                    if np.any(video_res_masks[0][0].cpu().numpy() > 0):
+                        output_dict[storage_key][frame_idx] = current_out
+                else:
+                    output_dict[storage_key][frame_idx] = current_out
 
             # Create slices of per-object outputs for subsequent interaction with each
             # individual object after tracking.
@@ -825,7 +852,7 @@ class SAM2VideoPredictor(SAM2Base):
                 inference_state, pred_masks
             )
             
-        return frame_idx, obj_ids, video_res_masks
+        return frame_idx, obj_ids, video_res_masks, out_curr
 
 
     @torch.inference_mode()
@@ -1067,14 +1094,14 @@ class SAM2VideoPredictor(SAM2Base):
         image, backbone_out = inference_state["cached_features"].get(
             frame_idx, (None, None)
         )
-        if backbone_out is None:
-            # Cache miss -- we will run inference on a single image
-            device = inference_state["device"]
-            image = inference_state["images"][frame_idx].to(device).float().unsqueeze(0)
-            backbone_out = self.forward_image(image)
-            # Cache the most recent frame's feature (for repeated interactions with
-            # a frame; we can use an LRU cache for more frames in the future).
-            inference_state["cached_features"] = {frame_idx: (image, backbone_out)}
+        # if backbone_out is None:
+        # Cache miss -- we will run inference on a single image
+        device = inference_state["device"]
+        image = inference_state["images"][frame_idx].to(device).float().unsqueeze(0)
+        backbone_out = self.forward_image(image)
+        # Cache the most recent frame's feature (for repeated interactions with
+        # a frame; we can use an LRU cache for more frames in the future).
+        inference_state["cached_features"] = {frame_idx: (image, backbone_out)}
 
         # expand the features to have the same dimension as the number of objects
         expanded_image = image.expand(batch_size, -1, -1, -1)
@@ -1107,9 +1134,11 @@ class SAM2VideoPredictor(SAM2Base):
         run_mem_encoder,
         prev_sam_mask_logits=None,
         memory_stride=1,
+        double_memory_bank=False,
     ):
         """Run tracking on a single frame based on current inputs and previous memory."""
         # Retrieve correct image features
+
         (
             _,
             _,
@@ -1134,6 +1163,7 @@ class SAM2VideoPredictor(SAM2Base):
             run_mem_encoder=run_mem_encoder,
             prev_sam_mask_logits=prev_sam_mask_logits,
             memory_stride=memory_stride,
+            double_memory_bank=double_memory_bank,
         )
 
         # optionally offload the output to CPU memory to save GPU space

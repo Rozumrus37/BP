@@ -102,17 +102,20 @@ def check_boundaries(H, W, min_row, min_col, max_row, max_col):
 
     return True  # Bounding box fits within the given dimensions
 
-def load_frames(video_dir):
+def load_frames(video_dir, double_memory=False):
     frame_names = [
         p for p in os.listdir(video_dir)
         if os.path.splitext(p)[-1] in [".jpg", ".jpeg", ".JPG", ".JPEG"]
     ]
     # print(frame_names)
-    frame_names = [i for i in frame_names if i[0] != '.']
+    if double_memory:
+        frame_names = [i for i in frame_names if i[0] != '.'] + [i for i in frame_names if i[0] != '.']
+    else:
+        frame_names = [i for i in frame_names if i[0] != '.']
 
     frame_names.sort(key=lambda p: int(os.path.splitext(p)[0]))
 
-    return frame_names #['00000001.jpg'] + frame_names
+    return  frame_names # ['00000001.jpg', '00000001.jpg'] +
 
 
 def show_mask(mask, ax, obj_id=None, random_color=False, ann_frame_idx=0, to_save_path=None):
