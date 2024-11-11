@@ -26,12 +26,15 @@ def parse_args():
     parser.add_argument('--memory_stride', type=int, default=1)
     parser.add_argument('--sequences')
     parser.add_argument('--crop_gt', action="store_true")
-    parser.add_argument('--factor', type=int, default=1)
+    parser.add_argument('--factor', type=float, default=1)
     parser.add_argument('--use_prev_box', action="store_true")
     parser.add_argument('--use_square_box', action="store_true")
     parser.add_argument('--no_mask_set_larger_prev_bbox', action="store_true")
     parser.add_argument('--no_mask_set_whole_image', action="store_true")
     parser.add_argument('--double_memory_bank', action="store_true")
+    parser.add_argument('--oracle_threshold', type=float, default=20)
+    parser.add_argument('--uncroped_mask_for_double_MB', action="store_true")
+    parser.add_argument('--oracle', action="store_true")
 
     args = parser.parse_args()
 
@@ -41,12 +44,12 @@ def parse_args():
     return (args.exclude_empty_masks, args.vis_out, args.memory_stride, 
     args.crop_gt, args.factor, args.use_prev_box, args.use_square_box, 
     args.no_mask_set_larger_prev_bbox, args.no_mask_set_whole_image, 
-    args.double_memory_bank, args.sequences)
+    args.double_memory_bank, args.uncroped_mask_for_double_MB, args.oracle, args.oracle_threshold, args.sequences)
 
 (exclude_empty_masks, vis_out, memory_stride, 
 crop_gt, factor, use_prev_box, use_square_box, 
 no_mask_set_larger_prev_bbox, no_mask_set_whole_image, 
-double_memory_bank, sequences) = parse_args()
+double_memory_bank, uncroped_mask_for_double_MB, oracle, oracle_threshold, sequences) = parse_args()
 
 if sequences != None:
     SEQ = sequences
@@ -89,7 +92,7 @@ def run_eval(seq):
             mask=np.array(mask_first_frame),
         )
 
-        mask_full_size = get_full_size_mask(out_mask_logits, bbox, image_path, 0, H, W)
+        mask_full_size = get_full_size_mask(out_mask_logits, bbox, H, W)
 
         predictor.load_first_frame(inference_state, image_path, bbox=None, frame_idx=1)
         _, _, out_mask_logits = predictor.add_new_mask(
@@ -101,7 +104,8 @@ def run_eval(seq):
         start_idx = 2
 
         if vis_out:
-            vis(get_full_size_mask(out_mask_logits, None, image_path, 0, H, W), [1], 0, image_path, "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/fr_" + seq)
+            vis(get_full_size_mask(out_mask_logits, None, H, W), [1], 0, 
+                image_path, "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/full_resol_" + seq)
     else:
         predictor.load_first_frame(inference_state, image_path, bbox=bbox,frame_idx=0)
         _, _, out_mask_logits = predictor.add_new_mask(
@@ -111,7 +115,7 @@ def run_eval(seq):
             mask=np.array(mask_first_frame),
         )
 
-        mask_full_size = get_full_size_mask(out_mask_logits, bbox, image_path, 0, H, W)
+        mask_full_size = get_full_size_mask(out_mask_logits, bbox, H, W)
 
     if vis_out:
         vis(mask_full_size, [1], 0, os.path.join(video_dir, frame_names[0]), output_dir)
@@ -119,22 +123,23 @@ def run_eval(seq):
         img_pil_full_res = Image.open(image_path) 
         img_pil = img_pil_full_res.crop(bbox)
          
-        img_pil.save(output_dir + '/z_cropped' + str(0) +'.png')
+        img_pil.save(output_dir + '/cropped' + str(0) +'.png')
 
     masks_all = []
     prev_bbox = None
+    missed_best_mask = 0
 
     if use_prev_box or crop_gt:
         prev_bbox = (min_row, min_col, max_row, max_col)
 
-    for out_frame_idx in tqdm(range(start_idx, len(frame_names), start_idx)):
+    for out_frame_idx in range(start_idx, len(frame_names), start_idx):
+        # print(out_frame_idx)
         image_path = os.path.join(video_dir, frame_names[out_frame_idx])
 
         if vis_out and use_prev_box:
             img_pil_full_res = Image.open(image_path) 
             img_pil = img_pil_full_res.crop(prev_bbox)
-             
-            img_pil.save(output_dir + '/z_cropped' + str(out_frame_idx) +'.png')
+            img_pil.save(output_dir + '/cropped' + str(out_frame_idx) +'.png')
 
         bbox = None
 
@@ -146,43 +151,74 @@ def run_eval(seq):
             bbox = get_bounding_box(mask_curr)
      
             if bbox != None:
-                if vis_out:
-                    img_pil_full_res = Image.open(image_path) 
-                    img_pil = img_pil_full_res.crop(bbox)
-                     
-                    img_pil.save(output_dir + '/z_cropped' + str(out_frame_idx) +'.png')
-
-                    vis(mask_curr, [1], out_frame_idx, image_path, "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + seq)
-
                 min_row, min_col, max_row, max_col = bbox 
                 if use_square_box:
-                    min_col, min_row, max_col, max_row = increase_bbox_to_square(H, W, min_col, min_row, max_col, max_row, factor=factor)
+                    min_col, min_row, max_col, max_row = increase_bbox_to_square(H, W, 
+                        min_col, min_row, max_col, max_row, factor=factor)
                 else:
-                    min_col, min_row, max_col, max_row = increase_bbox_area(H, W, min_col, min_row, max_col, max_row, factor=factor)
-                bbox = min_row, min_col, max_row, max_col 
+                    min_col, min_row, max_col, max_row = increase_bbox_area(H, W, 
+                        min_col, min_row, max_col, max_row, factor=factor)
 
-            masks_all.append(mask_curr)
+                bbox = min_row, min_col, max_row, max_col 
 
         predictor.load_first_frame(inference_state, image_path, frame_idx=out_frame_idx, bbox=bbox)
 
-        out_frame_idx, out_obj_ids, out_mask_logits, out_curr = predictor.track(inference_state, 
-            exclude_empty_masks=exclude_empty_masks, memory_stride=memory_stride, frame_idx=out_frame_idx, double_memory_bank=double_memory_bank)
+        seq_to_pass = None
 
-        mask_full_size = get_full_size_mask(out_mask_logits, bbox, image_path, out_frame_idx, H, W)
-        masks_all.append(mask_full_size)
+        if oracle:
+            seq_to_pass = seq
+
+        out_frame_idx, out_obj_ids, out_mask_logits, out_curr, miss, video_res_masks_second_best = predictor.track(inference_state, 
+            exclude_empty_masks=exclude_empty_masks, 
+            memory_stride=memory_stride, 
+            frame_idx=out_frame_idx, 
+            double_memory_bank=double_memory_bank,
+            video_H=H,
+            video_W=W,
+            seq=seq_to_pass,
+            oracle_threshold=oracle_threshold)
+
+        missed_best_mask += miss
+
+        mask_full_size = get_full_size_mask(out_mask_logits, bbox, H, W)
+        
+        mask_full_size_second_best = None 
+
+        if video_res_masks_second_best != None:
+            mask_full_size_second_best = get_full_size_mask(video_res_masks_second_best, bbox, H, W) 
 
         if double_memory_bank:
             predictor.load_first_frame(inference_state, image_path, frame_idx=out_frame_idx, bbox=None)
             predictor.load_first_frame(inference_state, image_path, frame_idx=out_frame_idx+1, bbox=None)
 
-            out_frame_idx, out_obj_ids, out_mask_logits, out_curr = predictor.track(inference_state, 
-                exclude_empty_masks=exclude_empty_masks, memory_stride=memory_stride, frame_idx=out_frame_idx, prev_out=out_curr, double_memory_bank=double_memory_bank)
+            out_frame_idx, out_obj_ids, out_mask_logits, out_curr, miss, video_res_masks_second_best = predictor.track(inference_state, 
+                exclude_empty_masks=exclude_empty_masks, 
+                memory_stride=memory_stride, 
+                frame_idx=out_frame_idx, 
+                prev_out=out_curr, 
+                double_memory_bank=double_memory_bank,
+                video_H=H,
+                video_W=W,
+                seq=seq_to_pass,
+                oracle_threshold=oracle_threshold)
+
+            if uncroped_mask_for_double_MB:
+                mask_full_size = get_full_size_mask(out_mask_logits, None, image_path, H, W)
 
             if vis_out:
-                vis(get_full_size_mask(out_mask_logits, None, image_path, out_frame_idx, H, W), out_obj_ids, out_frame_idx//2, image_path, "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/fr_" + seq)
+                vis(get_full_size_mask(out_mask_logits, None, image_path, H, W), out_obj_ids, out_frame_idx//2, 
+                    image_path, "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/full_resol_" + seq)
+
+        
+        masks_all.append(mask_full_size)
 
         if vis_out:
-            vis(mask_full_size, out_obj_ids, out_frame_idx//2, image_path, "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + seq)
+            vis(mask_full_size, out_obj_ids, out_frame_idx//2 if double_memory_bank else out_frame_idx, 
+                image_path, "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + seq)
+
+            vis(mask_full_size_second_best, out_obj_ids, out_frame_idx//2 if double_memory_bank else out_frame_idx, 
+                image_path, "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + seq + "_second_best")
+
 
         if use_prev_box:
             bbox = get_bounding_box(mask_full_size)
@@ -196,8 +232,9 @@ def run_eval(seq):
                     min_col, min_row, max_col, max_row = increase_bbox_area(H, W, min_col, min_row, max_col, max_row, factor=factor)
 
                 if min_row-max_row != 0 and min_col-max_col != 0:
-                    prev_bbox = (min_row, min_col, max_row, max_col)
-                    
+                    prev_bbox = (min_row, min_col, max_row, max_col)    
+                else:
+                    print("Mask prediction is just a line or empty!") 
             elif no_mask_set_larger_prev_bbox:
                 min_row, min_col, max_row, max_col = prev_bbox
                 
@@ -208,44 +245,37 @@ def run_eval(seq):
 
                 if min_row-max_row != 0 and min_col-max_col != 0:
                     prev_bbox = (min_row, min_col, max_row, max_col)
+                else:
+                    print("Mask prediction is just a line or empty!")
             elif no_mask_set_whole_image:
                 prev_bbox = None
     
+    if oracle:    
+        print(f"For {seq} number of missed_best_mask is {missed_best_mask} and the percanrge is: {(missed_best_mask / (len(masks_all) + 1))*100: .2f} %")
     return [mask_first_frame] + masks_all
 
 def vis(mask_full_size, out_obj_ids, ann_frame_idx, image, to_save_path):
     image = Image.open(image)
-
     plt.clf()
     plt.cla()
-
     plt.imshow(image)
 
     show_mask(mask_full_size, plt.gca(), obj_id=out_obj_ids[0], ann_frame_idx=ann_frame_idx, to_save_path=to_save_path)
 
-
 all_ious = []
-cnt = 1
 
 for seq in SEQ:
     masks_all = run_eval(seq)
-
     iou_curr = get_iou(seq, masks_all)
-
     all_ious.append(iou_curr)
 
-    print(f"IoU fpr {seq} is: {iou_curr}")
+    print(f"IoU for {seq} is: {iou_curr}")
 
-    # for iou_i in all_ious:
-    #     print(f"{iou_i}")
+if sequences == None:
+    for iou_i in all_ious:
+        print(f"{iou_i}")
 
-    # print("All ious:\n")
-
-for iou_i in all_ious:
-    print(f"{iou_i}")
-
-
-print(f"The mean after processing seqs is: {np.array(all_ious).mean()}")
+    print(f"The mean after processing seqs is: {np.array(all_ious).mean()}")
 
 
 

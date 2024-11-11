@@ -14,10 +14,12 @@ from sam2.modeling.sam.mask_decoder import MaskDecoder
 from sam2.modeling.sam.prompt_encoder import PromptEncoder
 from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
+from compute_iou import obatin_iou, get_nth_mask
+from utilities_eval import get_full_size_mask
 
 # a large negative value as a placeholder score for missing objects
 NO_OBJ_SCORE = -1024.0
-
+# seq="rabbit"
 
 class SAM2Base(torch.nn.Module):
     def __init__(
@@ -261,6 +263,12 @@ class SAM2Base(torch.nn.Module):
         mask_inputs=None,
         high_res_features=None,
         multimask_output=False,
+        frame_idx=None,
+        video_H=None,
+        video_W=None,
+        seq=None,
+        oracle_threshold=None,
+        bbox=None,
     ):
         """
         Forward SAM prompt encoders and mask heads.
@@ -378,16 +386,90 @@ class SAM2Base(torch.nn.Module):
         )
 
         sam_output_token = sam_output_tokens[:, 0]
+
+        miss = 0
+        second_best_low_res_multimask = None
+
         if multimask_output:
+
+            if seq != None:
+                # print("NONO: ", self.non_overlap_masks)
+                batch_inds = torch.arange(B, device=device)
+                low_res_masks = low_res_multimasks[batch_inds, 0].unsqueeze(1)
+
+                _, first_mask = self._get_orig_video_res_output_RR(
+                    device, video_H, video_W, low_res_masks
+                )
+
+                low_res_masks = low_res_multimasks[batch_inds, 1].unsqueeze(1)
+
+                _, second_mask = self._get_orig_video_res_output_RR(
+                    device, video_H, video_W, low_res_masks
+                )
+
+                low_res_masks = low_res_multimasks[batch_inds, 2].unsqueeze(1)
+
+                _, third_mask = self._get_orig_video_res_output_RR(
+                    device, video_H, video_W, low_res_masks
+                )
+
+                # import pdb; pdb.set_trace();
+
+                H, W = get_nth_mask(seq, frame_idx).shape
+
+                first_mask = get_full_size_mask(first_mask, bbox, H, W)
+                second_mask = get_full_size_mask(second_mask, bbox, H, W)
+                third_mask = get_full_size_mask(third_mask, bbox, H, W)
+
+
+                IoU_with_prev_for_mask1 = obatin_iou(first_mask, get_nth_mask(seq, frame_idx))
+                IoU_with_prev_for_mask2 = obatin_iou(second_mask, get_nth_mask(seq, frame_idx))
+                IoU_with_prev_for_mask3 = obatin_iou(third_mask, get_nth_mask(seq, frame_idx))
+
+
+                max_iou = max(IoU_with_prev_for_mask1, max(IoU_with_prev_for_mask2, IoU_with_prev_for_mask3))
+                min_iou = min(IoU_with_prev_for_mask1, min(IoU_with_prev_for_mask2, IoU_with_prev_for_mask3))
+                second_maximum = IoU_with_prev_for_mask1 + IoU_with_prev_for_mask2 + IoU_with_prev_for_mask3 - max_iou - min_iou
+                # print(f"For frame idx {frame_idx} the error is: {(max_iou - second_maximum)*100}%")
+
+                if IoU_with_prev_for_mask1 == max_iou:
+                    best_iou_inds = 0
+                elif IoU_with_prev_for_mask2 == max_iou:
+                    best_iou_inds = 1
+                else:
+                    best_iou_inds = 2
+
+                if IoU_with_prev_for_mask1 == second_maximum:
+                    second_best_iou_inds = 0
+                elif IoU_with_prev_for_mask2 == second_maximum:
+                    second_best_iou_inds = 1
+                else:
+                    second_best_iou_inds = 2
+
+                best_low_res_multimask_according_to_sam2 = low_res_multimasks[batch_inds, torch.argmax(ious, dim=-1) ].unsqueeze(1)
+
+                # print(best_iou_inds,  torch.argmax(ious, dim=-1) )
+                if (max_iou - second_maximum)*100 > oracle_threshold and best_iou_inds !=  torch.argmax(ious, dim=-1):
+                    miss = 1
+                    # print(f"For frame idx {frame_idx} the error is: {(max_iou - second_maximum)*100: .2f}%")
+
+            else:
+                best_iou_inds = torch.argmax(ious, dim=-1) 
+
             # take the best mask prediction (with the highest IoU estimation)
-            best_iou_inds = torch.argmax(ious, dim=-1)
+            #best_iou_inds = torch.argmax(ious, dim=-1)
             batch_inds = torch.arange(B, device=device)
             low_res_masks = low_res_multimasks[batch_inds, best_iou_inds].unsqueeze(1)
             high_res_masks = high_res_multimasks[batch_inds, best_iou_inds].unsqueeze(1)
+
+
             if sam_output_tokens.size(1) > 1:
                 sam_output_token = sam_output_tokens[batch_inds, best_iou_inds]
         else:
             low_res_masks, high_res_masks = low_res_multimasks, high_res_multimasks
+
+
+      
 
         # Extract object pointer from the SAM output token (with occlusion handling)
         obj_ptr = self.obj_ptr_proj(sam_output_token)
@@ -410,7 +492,31 @@ class SAM2Base(torch.nn.Module):
             high_res_masks,
             obj_ptr,
             object_score_logits,
+            miss,
+            best_low_res_multimask_according_to_sam2,
         )
+
+
+    def _get_orig_video_res_output_RR(self, device, video_H, video_W, any_res_masks):
+        """
+        Resize the object scores to the original video resolution (video_res_masks)
+        and apply non-overlapping constraints for final output.
+        """
+       
+        any_res_masks = any_res_masks.to(device, non_blocking=True)
+        if any_res_masks.shape[-2:] == (video_H, video_W):
+            video_res_masks = any_res_masks
+        else:
+            video_res_masks = torch.nn.functional.interpolate(
+                any_res_masks,
+                size=(video_H, video_W),
+                mode="bilinear",
+                align_corners=False,
+            )
+        if self.non_overlap_masks:
+            video_res_masks = self._apply_non_overlapping_constraints(video_res_masks)
+        return any_res_masks, video_res_masks
+
 
     def _use_mask_as_output(self, backbone_features, high_res_features, mask_inputs):
         """
@@ -437,7 +543,7 @@ class SAM2Base(torch.nn.Module):
             )
         else:
             # produce an object pointer using the SAM decoder from the mask input
-            _, _, _, _, _, obj_ptr, _ = self._forward_sam_heads(
+            _, _, _, _, _, obj_ptr, _, _, _ = self._forward_sam_heads(
                 backbone_features=backbone_features,
                 mask_inputs=self.mask_downsample(mask_inputs_float),
                 high_res_features=high_res_features,
@@ -462,6 +568,8 @@ class SAM2Base(torch.nn.Module):
             high_res_masks,
             obj_ptr,
             object_score_logits,
+            0,
+            None,
         )
 
     def forward_image(self, img_batch: torch.Tensor):
@@ -540,6 +648,9 @@ class SAM2Base(torch.nn.Module):
                 # We also allow taking the memory frame non-consecutively (with stride>1), in which case
                 # we take (self.num_maskmem - 2) frames among every stride-th frames plus the last frame.
                 stride = 1 if self.training else 2*self.memory_temporal_stride_for_eval
+
+                prev_frame_inds = []
+
                 for t_pos in range(1, self.num_maskmem):
                     t_rel = self.num_maskmem - t_pos  # how many frames before current frame
                     if t_rel == 1:
@@ -564,6 +675,14 @@ class SAM2Base(torch.nn.Module):
                             prev_frame_idx = -(-(frame_idx + 4) // stride) * stride
                             # then seek further among every r-th frames
                             prev_frame_idx = prev_frame_idx + (t_rel - 2) * stride
+
+                    prev_frame_inds.append(prev_frame_idx)
+
+                prev_frame_inds = prev_frame_inds[-3:]
+                cnt = 0
+
+                for t_pos in range(1, self.num_maskmem, 2):
+                    prev_frame_idx = prev_frame_inds[cnt] 
                     out = output_dict["non_cond_frame_outputs"].get(prev_frame_idx, None)
 
                     if out is None:
@@ -579,7 +698,10 @@ class SAM2Base(torch.nn.Module):
                         # frames, we still attend to it as if it's a non-conditioning frame.
                         out = unselected_cond_outputs.get(prev_frame_idx+1, None)
 
-                    t_pos_and_prevs.append((t_pos, out))
+                    t_pos_and_prevs.append((t_pos+1, out))
+
+                    cnt+=1
+
             else:
                 # Add last (self.num_maskmem - 1) frames before current frame for non-conditioning memory
                 # the earliest one has t_pos=1 and the latest one has t_pos=self.num_maskmem-1
@@ -634,6 +756,8 @@ class SAM2Base(torch.nn.Module):
                     maskmem_enc + self.maskmem_tpos_enc[self.num_maskmem - t_pos - 1]
                 )
                 to_cat_memory_pos_embed.append(maskmem_enc)
+
+            # print(len(to_cat_memory_pos_embed))
 
 
             # print(len(to_cat_memory_pos_embed), frame_idx)
@@ -792,6 +916,11 @@ class SAM2Base(torch.nn.Module):
         track_in_reverse,
         prev_sam_mask_logits,
         double_memory_bank,
+        video_H=None, 
+        video_W=None,
+        seq=None,
+        oracle_threshold=None,
+        bbox=None,
     ):
         current_out = {"point_inputs": point_inputs, "mask_inputs": mask_inputs}
         # High-resolution feature maps for the SAM head, reshape (HW)BC => BCHW
@@ -837,6 +966,12 @@ class SAM2Base(torch.nn.Module):
                 mask_inputs=mask_inputs,
                 high_res_features=high_res_features,
                 multimask_output=multimask_output,
+                frame_idx=frame_idx,
+                video_H=video_H,
+                video_W=video_W,
+                seq=seq,
+                oracle_threshold=oracle_threshold,
+                bbox=bbox,
             )
 
         return current_out, sam_outputs, high_res_features, pix_feat
@@ -888,6 +1023,11 @@ class SAM2Base(torch.nn.Module):
         prev_sam_mask_logits=None,
         memory_stride=1,
         double_memory_bank=False,
+        video_H=None,
+        video_W=None,
+        seq=None,
+        oracle_threshold=None,
+        bbox=None,
     ):  
         self.memory_temporal_stride_for_eval = memory_stride
 
@@ -904,7 +1044,13 @@ class SAM2Base(torch.nn.Module):
             track_in_reverse,
             prev_sam_mask_logits,
             double_memory_bank,
+            video_H,
+            video_W,
+            seq,
+            oracle_threshold,
+            bbox,
         )
+
 
         (
             _,
@@ -914,6 +1060,8 @@ class SAM2Base(torch.nn.Module):
             high_res_masks,
             obj_ptr,
             object_score_logits,
+            miss,
+            second_best_low_res_masks,
         ) = sam_outputs
 
         # print(frame_idx, object_score_logits)
@@ -938,7 +1086,7 @@ class SAM2Base(torch.nn.Module):
             current_out,
         )
 
-        return current_out
+        return current_out, miss, second_best_low_res_masks
 
     def _use_multimask(self, is_init_cond_frame, point_inputs):
         """Whether to use multimask output in the SAM head."""

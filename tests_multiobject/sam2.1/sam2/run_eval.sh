@@ -2,8 +2,38 @@
 
 # Define an array of commands
 commands=(
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 121"  
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 144"  
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 169"  
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --oracle --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --oracle --sequences marathon,hand2,handball1,shaking,singer3,soldier,wheel,zebrafish1,flamingo1 --oracle_threshold 40 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --oracle --sequences marathon,hand2,handball1,shaking,singer3,soldier,wheel,zebrafish1,flamingo1 --oracle_threshold 20 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --oracle --sequences marathon,hand2,handball1,shaking,singer3,soldier,wheel,zebrafish1,flamingo1 --oracle_threshold 5 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --oracle --sequences marathon,hand2,handball1,shaking,singer3,soldier,wheel,zebrafish1,flamingo1 --oracle_threshold 10 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --oracle --sequences marathon,hand2,handball1,shaking,singer3,soldier,wheel,zebrafish1,flamingo1 --oracle_threshold 30 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --oracle --sequences marathon,hand2,handball1,shaking,singer3,soldier,wheel,zebrafish1,flamingo1 --oracle_threshold 50 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks"
 
-    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --use_square_box --factor 3"
+
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 196"  
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 225"  
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 256"  
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 289" 
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 400"   
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 625"  
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 100 --memory_stride 4 --exclude_empty_masks"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 100 --memory_stride 5 --exclude_empty_masks"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 100 --memory_stride 6 --exclude_empty_masks"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 100 --memory_stride 8 --exclude_empty_masks"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 100 --memory_stride 9 --exclude_empty_masks"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 100 --memory_stride 10 --exclude_empty_masks"
+   
+
+    
+
+
+
+
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --use_square_box --factor 4"
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --use_square_box --factor 7"
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --use_square_box --factor 10"

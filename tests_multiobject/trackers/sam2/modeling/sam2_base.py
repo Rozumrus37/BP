@@ -418,6 +418,8 @@ class SAM2Base(torch.nn.Module):
             batch_inds = torch.arange(B, device=device)
             low_res_masks = low_res_multimasks[batch_inds, best_iou_inds].unsqueeze(1)
 
+    
+
             if prev_mask != None:
                 best_index = best_iou_inds.cpu().numpy()[0]
                 best_ious_inds_np = ious.cpu().numpy()[0]

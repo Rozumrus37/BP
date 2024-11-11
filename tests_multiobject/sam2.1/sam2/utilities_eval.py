@@ -34,9 +34,9 @@ def increase_bbox_area(H, W, min_row, min_col, max_row, max_col, factor=2):
     if new_min_col < 0:
         new_min_col = 0
     if new_max_row > H:
-        new_max_row = H-1
+        new_max_row = H
     if new_max_col > W:
-        new_max_col = W-1
+        new_max_col = W
 
 
     return int(new_min_row), int(new_min_col), int(new_max_row), int(new_max_col)
@@ -75,13 +75,7 @@ def increase_bbox_to_square(H, W, min_row, min_col, max_row, max_col, factor=2):
 
     return int(new_min_row), int(new_min_col), int(new_max_row), int(new_max_col)
 
-
-
-def get_full_size_mask(out_mask_logits, bbox, image, ann_frame_idx, H, W):
-    # image = Image.open(image)
-    # mask_curr = get_nth_mask(seq, ann_frame_idx)
-    # H, W = mask_curr.shape
-
+def get_full_size_mask(out_mask_logits, bbox, H, W):
     if bbox != None:
         min_row, min_col, max_row, max_col = bbox
         filled_mask = np.zeros((H,W))
@@ -107,7 +101,7 @@ def load_frames(video_dir, double_memory=False):
         p for p in os.listdir(video_dir)
         if os.path.splitext(p)[-1] in [".jpg", ".jpeg", ".JPG", ".JPEG"]
     ]
-    # print(frame_names)
+
     if double_memory:
         frame_names = [i for i in frame_names if i[0] != '.'] + [i for i in frame_names if i[0] != '.']
     else:
@@ -115,7 +109,7 @@ def load_frames(video_dir, double_memory=False):
 
     frame_names.sort(key=lambda p: int(os.path.splitext(p)[0]))
 
-    return  frame_names # ['00000001.jpg', '00000001.jpg'] +
+    return  frame_names 
 
 
 def show_mask(mask, ax, obj_id=None, random_color=False, ann_frame_idx=0, to_save_path=None):

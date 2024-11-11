@@ -45,6 +45,7 @@ class SAM2VideoPredictor(SAM2Base):
         self.image_width_fr = 0
         self.image_height_fr = 0 
         self.image_fr = None
+        self.bbox = None
 
     @torch.inference_mode()
     def init_state(
@@ -147,6 +148,8 @@ class SAM2VideoPredictor(SAM2Base):
         inference_state["video_height"] = height
         inference_state["video_width"] = width
 
+        self.bbox = bbox
+
         if frame_idx == 0:
             self._get_image_feature(inference_state, frame_idx=0, batch_size=1)
 
@@ -163,7 +166,7 @@ class SAM2VideoPredictor(SAM2Base):
             # print(bbox, video_width_fr, video_height_fr)
             img_pil = img_pil_full_res.crop(bbox)
             # print("YES")
-            # print(img_pil.size)
+            # print(img_path, img_pil.size, bbox, image_size,video_width_fr, video_height_fr )
             # print(img_pil.size)
 
             # img_pil.save('image_pil_saved.png')
@@ -442,7 +445,7 @@ class SAM2VideoPredictor(SAM2Base):
         is_cond = is_init_cond_frame or self.add_all_frames_to_correct_as_cond
         storage_key = "cond_frame_outputs" if is_cond else "non_cond_frame_outputs"
 
-        current_out, _ = self._run_single_frame_inference(
+        current_out, _, _, _ = self._run_single_frame_inference(
             inference_state=inference_state,
             output_dict=obj_output_dict,  # run on the slice of a single object
             frame_idx=frame_idx,
@@ -650,7 +653,7 @@ class SAM2VideoPredictor(SAM2Base):
         ) = self._get_image_feature(inference_state, frame_idx, batch_size)
 
         # Feed the empty mask and image feature above to get a dummy object pointer
-        current_out = self.track_step(
+        current_out, _ = self.track_step(
             frame_idx=frame_idx,
             is_init_cond_frame=True,
             current_vision_feats=current_vision_feats,
@@ -749,6 +752,10 @@ class SAM2VideoPredictor(SAM2Base):
         frame_idx=0,
         prev_out=None,
         double_memory_bank=False,
+        video_H=None,
+        video_W=None,
+        seq=None,
+        oracle_threshold=None,
     ):  
 
         # out_frame_idx = frame_idx
@@ -778,7 +785,8 @@ class SAM2VideoPredictor(SAM2Base):
         #     max_frame_num_to_track = num_frames
        
 
-  
+        miss = 0
+        video_res_masks_second_best = None
         # We skip those frames already in consolidated outputs (these are frames
         # that received input clicks or mask). Note that we cannot directly run
         # batched forward on them via `_run_single_frame_inference` because the
@@ -796,7 +804,7 @@ class SAM2VideoPredictor(SAM2Base):
             pred_masks = current_out["pred_masks"]
         else:
             storage_key = "non_cond_frame_outputs"
-            current_out, pred_masks = self._run_single_frame_inference(
+            current_out, pred_masks, miss, second_best_low_res_masks = self._run_single_frame_inference(
                 inference_state=inference_state,
                 output_dict=output_dict,
                 frame_idx=frame_idx,
@@ -808,11 +816,20 @@ class SAM2VideoPredictor(SAM2Base):
                 run_mem_encoder=True,
                 memory_stride=memory_stride,
                 double_memory_bank=double_memory_bank,
+                video_H=inference_state["video_height"],
+                video_W=inference_state["video_width"],
+                seq=seq,
+                oracle_threshold=oracle_threshold,
             )
 
             _, video_res_masks = self._get_orig_video_res_output(
                 inference_state, pred_masks
             )
+
+            if second_best_low_res_masks != None:
+                _, video_res_masks_second_best = self._get_orig_video_res_output(
+                    inference_state, second_best_low_res_masks
+                )
 
             out_curr = None 
 
@@ -852,7 +869,7 @@ class SAM2VideoPredictor(SAM2Base):
                 inference_state, pred_masks
             )
             
-        return frame_idx, obj_ids, video_res_masks, out_curr
+        return frame_idx, obj_ids, video_res_masks, out_curr, miss, video_res_masks_second_best
 
 
     @torch.inference_mode()
@@ -918,7 +935,7 @@ class SAM2VideoPredictor(SAM2Base):
                 pred_masks = current_out["pred_masks"]
             else:
                 storage_key = "non_cond_frame_outputs"
-                current_out, pred_masks = self._run_single_frame_inference(
+                current_out, pred_masks, _, _ = self._run_single_frame_inference(
                     inference_state=inference_state,
                     output_dict=output_dict,
                     frame_idx=frame_idx,
@@ -1135,6 +1152,10 @@ class SAM2VideoPredictor(SAM2Base):
         prev_sam_mask_logits=None,
         memory_stride=1,
         double_memory_bank=False,
+        video_H=None,
+        video_W=None,
+        seq=None,
+        oracle_threshold=None,
     ):
         """Run tracking on a single frame based on current inputs and previous memory."""
         # Retrieve correct image features
@@ -1149,7 +1170,7 @@ class SAM2VideoPredictor(SAM2Base):
 
         # point and mask should not appear as input simultaneously on the same frame
         assert point_inputs is None or mask_inputs is None
-        current_out = self.track_step(
+        current_out, miss, second_best_low_res_masks = self.track_step(
             frame_idx=frame_idx,
             is_init_cond_frame=is_init_cond_frame,
             current_vision_feats=current_vision_feats,
@@ -1164,6 +1185,11 @@ class SAM2VideoPredictor(SAM2Base):
             prev_sam_mask_logits=prev_sam_mask_logits,
             memory_stride=memory_stride,
             double_memory_bank=double_memory_bank,
+            video_H=video_H,
+            video_W=video_W,
+            seq=seq,
+            oracle_threshold=oracle_threshold,
+            bbox=self.bbox,
         )
 
         # optionally offload the output to CPU memory to save GPU space
@@ -1178,7 +1204,17 @@ class SAM2VideoPredictor(SAM2Base):
             pred_masks_gpu = fill_holes_in_mask_scores(
                 pred_masks_gpu, self.fill_hole_area
             )
+
+            if second_best_low_res_masks != None:
+                second_best_low_res_masks = fill_holes_in_mask_scores(
+                    second_best_low_res_masks, self.fill_hole_area
+                )
+
         pred_masks = pred_masks_gpu.to(storage_device, non_blocking=True)
+
+        if second_best_low_res_masks != None:
+            second_best_low_res_masks = second_best_low_res_masks.to(storage_device, non_blocking=True)
+
         # "maskmem_pos_enc" is the same across frames, so we only need to store one copy of it
         maskmem_pos_enc = self._get_maskmem_pos_enc(inference_state, current_out)
         # object pointer is a small tensor, so we always keep it on GPU memory for fast access
@@ -1192,7 +1228,7 @@ class SAM2VideoPredictor(SAM2Base):
             "obj_ptr": obj_ptr,
             "object_score_logits": object_score_logits,
         }
-        return compact_current_out, pred_masks_gpu
+        return compact_current_out, pred_masks_gpu, miss, second_best_low_res_masks
 
     def _run_memory_encoder(
         self,
