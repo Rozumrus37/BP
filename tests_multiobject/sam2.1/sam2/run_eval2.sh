@@ -2,15 +2,18 @@
 
 # Define an array of commands
 commands=(
-    "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --oracle"
-    "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --oracle --sequences marathon,hand2,handball1,shaking,singer3,soldier,wheel,zebrafish1,flamingo1 --oracle_threshold 40"
-    "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --oracle --sequences marathon,hand2,handball1,shaking,singer3,soldier,wheel,zebrafish1,flamingo1 --oracle_threshold 20"
-    "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --oracle --sequences marathon,hand2,handball1,shaking,singer3,soldier,wheel,zebrafish1,flamingo1 --oracle_threshold 5"
-    "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --oracle --sequences marathon,hand2,handball1,shaking,singer3,soldier,wheel,zebrafish1,flamingo1 --oracle_threshold 10"
-    "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --oracle --sequences marathon,hand2,handball1,shaking,singer3,soldier,wheel,zebrafish1,flamingo1 --oracle_threshold 30"
-    "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --oracle --sequences marathon,hand2,handball1,shaking,singer3,soldier,wheel,zebrafish1,flamingo1 --oracle_threshold 50"
+    # "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --oracle"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --oracle --oracle_threshold 5"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --oracle --oracle_threshold 10 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks --no_mask_set_larger_prev_bbox "
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --oracle --oracle_threshold 20 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks --no_mask_set_larger_prev_bbox "
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --oracle --oracle_threshold 30 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks --no_mask_set_larger_prev_bbox "
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --oracle --oracle_threshold 40 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks --no_mask_set_larger_prev_bbox "
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --oracle --oracle_threshold 50 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks --no_mask_set_larger_prev_bbox "
 
 
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 144 --memory_stride 7 --exclude_empty_masks --no_mask_set_larger_prev_bbox --double_memory_bank --uncroped_mask_for_double_MB"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 400 --memory_stride 7 --exclude_empty_masks --no_mask_set_larger_prev_bbox --double_memory_bank --uncroped_mask_for_double_MB"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks --no_mask_set_larger_prev_bbox --double_memory_bank --uncroped_mask_for_double_MB"
     
     # "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py  --use_prev_box --factor 4"
     # "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py  --use_prev_box --factor 9"  

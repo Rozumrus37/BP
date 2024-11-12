@@ -86,10 +86,10 @@ class SAM2Tracker(object):
         output = None 
 
         if self.use_RR_sam2:
-            out_frame_idx, out_obj_ids, out_mask_logits, _, _ = self.predictor.track(self.inference_state, 
+            out_frame_idx, out_obj_ids, out_mask_logits, _, _, _ = self.predictor.track(self.inference_state, 
                 exclude_empty_masks=self.exclude_empty_masks, memory_stride=self.memory_stride, frame_idx=c)
 
-            mask_full_size = get_full_size_mask(out_mask_logits, bbox, image, self.H, self.W)
+            mask_full_size = get_full_size_mask(out_mask_logits, bbox, self.H, self.W)
 
             bbox = get_bounding_box(mask_full_size)
 
@@ -111,7 +111,7 @@ class SAM2Tracker(object):
 
             output = np.array(mask_full_size).astype(np.uint8) 
         else:
-            out_frame_idx, out_obj_ids, out_mask_logits, _, _ = self.predictor.track(self.inference_state, frame_idx=c)
+            out_frame_idx, out_obj_ids, out_mask_logits, _, _, _ = self.predictor.track(self.inference_state, frame_idx=c)
             output = (out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0]             
 
         return output

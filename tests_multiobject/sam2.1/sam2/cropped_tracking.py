@@ -62,7 +62,7 @@ def run_eval(seq):
 
     predictor = build_sam2_video_predictor(model_cfg, sam2_checkpoint, device='cuda')
     video_dir = "/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/" + seq + "/color"
-    output_dir = "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + str(seq)
+    output_dir = "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + str(seq) + "_oracle" if oracle else "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + str(seq) 
     frame_names = load_frames(video_dir, double_memory_bank)
     inference_state = predictor.init_state()
     mask_first_frame = get_nth_mask(seq, 0)
@@ -132,7 +132,7 @@ def run_eval(seq):
     if use_prev_box or crop_gt:
         prev_bbox = (min_row, min_col, max_row, max_col)
 
-    for out_frame_idx in range(start_idx, len(frame_names), start_idx):
+    for out_frame_idx in tqdm(range(start_idx, len(frame_names), start_idx)):
         # print(out_frame_idx)
         image_path = os.path.join(video_dir, frame_names[out_frame_idx])
 
@@ -203,7 +203,7 @@ def run_eval(seq):
                 oracle_threshold=oracle_threshold)
 
             if uncroped_mask_for_double_MB:
-                mask_full_size = get_full_size_mask(out_mask_logits, None, image_path, H, W)
+                mask_full_size = get_full_size_mask(out_mask_logits, None, H, W)
 
             if vis_out:
                 vis(get_full_size_mask(out_mask_logits, None, image_path, H, W), out_obj_ids, out_frame_idx//2, 
@@ -213,11 +213,16 @@ def run_eval(seq):
         masks_all.append(mask_full_size)
 
         if vis_out:
-            vis(mask_full_size, out_obj_ids, out_frame_idx//2 if double_memory_bank else out_frame_idx, 
-                image_path, "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + seq)
+            if oracle:
+                vis(mask_full_size, out_obj_ids, out_frame_idx//2 if double_memory_bank else out_frame_idx, 
+                image_path, output_dir)
 
-            vis(mask_full_size_second_best, out_obj_ids, out_frame_idx//2 if double_memory_bank else out_frame_idx, 
-                image_path, "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + seq + "_second_best")
+                vis(mask_full_size_second_best, out_obj_ids, out_frame_idx//2 if double_memory_bank else out_frame_idx, 
+                    image_path, "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + seq + "_sam2_best_pred")
+            else:
+                vis(mask_full_size, out_obj_ids, out_frame_idx//2 if double_memory_bank else out_frame_idx, 
+                image_path, output_dir)
+
 
 
         if use_prev_box:
@@ -251,8 +256,8 @@ def run_eval(seq):
                 prev_bbox = None
     
     if oracle:    
-        print(f"For {seq} number of missed_best_mask is {missed_best_mask} and the percanrge is: {(missed_best_mask / (len(masks_all) + 1))*100: .2f} %")
-    return [mask_first_frame] + masks_all
+        print(f"For {seq} number of missed_best_mask is {missed_best_mask} and the percanrge is: {(missed_best_mask / len(masks_all))*100: .2f} %")
+    return [mask_first_frame] + masks_all, (missed_best_mask / len(masks_all))*100
 
 def vis(mask_full_size, out_obj_ids, ann_frame_idx, image, to_save_path):
     image = Image.open(image)
@@ -264,10 +269,14 @@ def vis(mask_full_size, out_obj_ids, ann_frame_idx, image, to_save_path):
 
 all_ious = []
 
+total_miss = 0
+
 for seq in SEQ:
-    masks_all = run_eval(seq)
+    masks_all, missed_masks_perc = run_eval(seq)
     iou_curr = get_iou(seq, masks_all)
     all_ious.append(iou_curr)
+
+    total_miss += missed_masks_perc
 
     print(f"IoU for {seq} is: {iou_curr}")
 
@@ -277,6 +286,8 @@ if sequences == None:
 
     print(f"The mean after processing seqs is: {np.array(all_ious).mean()}")
 
+if oracle:
+    print("Mean miss: ", total_miss / len(SEQ))
 
 
 

@@ -856,6 +856,8 @@ class SAM2VideoPredictor(SAM2Base):
                 else:
                     output_dict[storage_key][frame_idx] = current_out
 
+      
+
             # Create slices of per-object outputs for subsequent interaction with each
             # individual object after tracking.
             self._add_output_per_object(

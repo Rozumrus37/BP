@@ -64,6 +64,44 @@ def vis_regressed_parabola(file_path=None):
 	# Show the plot
 	plt.show()
 
+
+def vis_oracle(file_path=None):
+	# Define the three points
+	# points = np.array([[5, 63], [10, 57], [20, 39], [30, 24], [40, 10], [50, 1]]) # marathon
+	# points = np.array([[5, 40.28], [10, 35.42], [20, 31.94], [30, 25.69], [40, 18.75], [50, 6.94]]) # hand2
+	# points = np.array([[5, 29.95], [10, 26.37], [20, 22.80], [30, 18.96], [40, 12.36], [50, 4.12]]) # shaking
+	# points = np.array([[5, 32], [10, 21], [20, 0], [30, 0], [40, 0], [50, 0]]) # marathon RR+oracle
+	# points = np.array([[5, 19.44], [10, 13.19], [20, 4.86], [30, 3.47], [40, 1.39], [50, 0]]) # hand2 RR+oracle
+	# points = np.array([[5, 30.77], [10, 29.67], [20, 26.37], [30, 21.70], [40, 10.44], [50, 2.20]]) # shaking RR+oracle
+	# points = np.array([[5, 36.17], [10, 14.63], [20, 3.72], [30, 0.53], [40, 0], [50, 0]]) # handball1 
+	# points = np.array([[5, 37.5], [10, 15.96], [20, 3.19], [30, 1.06], [40, 0], [50, 0]]) # handball1 RR+oracle
+	# points = np.array([[5, 0], [10, 0], [20, 0], [30, 0], [40, 0], [50, 0]]) # singer3 RR+oracle
+	# points = np.array([[5, 45.99], [10, 32.85], [20, 24.09], [30, 11.68], [40, 5.84], [50, 0.73]]) # soldier orcale
+	points = np.array([[5, 36.50], [10, 25.55], [20, 18.98], [30, 13.14], [40, 6.57], [50, 1.46]]) 
+
+
+	x_points = points[:, 0]
+	y_points = points[:, 1]
+
+
+	# Plot the points and the parabola
+	plt.scatter(x_points, y_points, color='red', label='')
+	plt.plot(x_points, y_points, color='blue', label='')
+	plt.ylabel("error (%): precicted mask is not the best")
+	plt.xlabel("thr (%): argmax_i(IoU(GT, mask_i)) - IoU(GT, mask_pred_sam2) > thr")
+
+	plt.yticks(y_points)
+	plt.xticks(x_points)
+	plt.title('oracle+RR experiment for soldier')
+	plt.grid(True)
+
+	# Save the plot as an image
+	plt.savefig(file_path)
+
+	# Show the plot
+	plt.show()
+
+
 def create_video():
 	# Set the path to the directory containing the frames
 	frames_path = '/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/hand2/color'  # Replace with the path to your frames
@@ -102,6 +140,7 @@ def create_video():
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--vis_area', action="store_true")
+parser.add_argument('--vis_oracle', action="store_true")
 parser.add_argument('--vis_parabola', action="store_true")
 parser.add_argument('--path',default="output.png")
 args = parser.parse_args()
@@ -110,6 +149,8 @@ if args.vis_area:
 	vis_area(file_path=args.path)
 elif args.vis_parabola:
 	vis_regressed_parabola(file_path=args.path)
+elif args.vis_oracle:
+	vis_oracle(file_path=args.path)
 
 
-create_video()
+# create_video()

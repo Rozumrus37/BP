@@ -96,6 +96,7 @@ class MaskDecoder(nn.Module):
             iou_head_depth,
             sigmoid_output=iou_prediction_use_sigmoid,
         )
+
         if self.pred_obj_scores:
             self.pred_obj_score_head = nn.Linear(transformer_dim, 1)
             if pred_obj_scores_mlp:
@@ -235,6 +236,7 @@ class MaskDecoder(nn.Module):
 
         # Generate mask quality predictions
         iou_pred = self.iou_prediction_head(iou_token_out)
+
         if self.pred_obj_scores:
             assert s == 1
             object_score_logits = self.pred_obj_score_head(hs[:, 0, :])
