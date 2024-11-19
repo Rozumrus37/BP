@@ -36,8 +36,8 @@ class SAM2Tracker(object):
         self.inference_state = self.predictor.init_state()
         self.no_mask_set_full_image = True
         self.memory_stride = 7
-        self.factor = 100
         self.prev_mask_increase_when_empty = True
+        self.factor = 100
         self.exclude_empty_masks = True
         self.use_RR_sam2 = False
         self.prev_bbox = None
@@ -49,14 +49,21 @@ class SAM2Tracker(object):
 
         mask = self.pad_mask_to_image_size(mask, (iimage.shape[0], iimage.shape[1]))
 
+        self.prev_mask = mask 
         bbox = None 
 
         if self.use_RR_sam2:
             min_row, min_col, max_row, max_col = get_bounding_box(mask)
-            min_col, min_row, max_col, max_row = increase_bbox_area(self.H, self.W, min_col, min_row, max_col, max_row, factor=self.factor)
 
-            bbox = (min_row, min_col, max_row, max_col)
-            mask = mask[min_col:max_col, min_row:max_row]
+            area = abs(min_row-max_row) * abs(min_col-max_col)
+
+            if area / (self.H*self.W*1.0) >= 0.1:
+                self.use_RR_sam2 = False
+            else:
+                min_col, min_row, max_col, max_row = increase_bbox_area(self.H, self.W, min_col, min_row, max_col, max_row, factor=self.factor)
+
+                bbox = (min_row, min_col, max_row, max_col)
+                mask = mask[min_col:max_col, min_row:max_row]
 
         self.predictor.load_first_frame(self.inference_state, image, bbox=bbox)
         _, _, out_mask_logits = self.predictor.add_new_mask(
@@ -87,7 +94,7 @@ class SAM2Tracker(object):
 
         if self.use_RR_sam2:
             out_frame_idx, out_obj_ids, out_mask_logits, _, _, _ = self.predictor.track(self.inference_state, 
-                exclude_empty_masks=self.exclude_empty_masks, memory_stride=self.memory_stride, frame_idx=c)
+                exclude_empty_masks=self.exclude_empty_masks, memory_stride=self.memory_stride, frame_idx=c, prev_mask=None)
 
             mask_full_size = get_full_size_mask(out_mask_logits, bbox, self.H, self.W)
 
@@ -111,8 +118,10 @@ class SAM2Tracker(object):
 
             output = np.array(mask_full_size).astype(np.uint8) 
         else:
-            out_frame_idx, out_obj_ids, out_mask_logits, _, _, _ = self.predictor.track(self.inference_state, frame_idx=c)
-            output = (out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0]             
+            out_frame_idx, out_obj_ids, out_mask_logits, _, _, _ = self.predictor.track(self.inference_state, frame_idx=c, prev_mask=None)
+            output = (out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0]  
+
+        self.prev_mask = output           
 
         return output
         

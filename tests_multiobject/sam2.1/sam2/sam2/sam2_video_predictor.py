@@ -119,6 +119,38 @@ class SAM2VideoPredictor(SAM2Base):
         return inference_state
 
 
+    def load_video_frames_from_video_file(
+        video_path,
+        offload_video_to_cpu=False,
+        img_mean=(0.485, 0.456, 0.406),
+        img_std=(0.229, 0.224, 0.225),
+        compute_device=torch.device("cuda"),
+    ):
+        """Load the video frames from a video file."""
+        import decord
+
+        img_mean = torch.tensor(img_mean, dtype=torch.float32)[:, None, None]
+        img_std = torch.tensor(img_std, dtype=torch.float32)[:, None, None]
+        # Get the original video height and width
+        decord.bridge.set_bridge("torch")
+        video_height, video_width, _ = decord.VideoReader(video_path).next().shape
+        # Iterate over all frames in the video
+        images = []
+        for frame in decord.VideoReader(video_path, width=self.image_size, height=self.image_size):
+            images.append(frame.permute(2, 0, 1))
+
+        images = torch.stack(images, dim=0).float() / 255.0
+        if not offload_video_to_cpu:
+            images = images.to(compute_device)
+            img_mean = img_mean.to(compute_device)
+            img_std = img_std.to(compute_device)
+        # normalize by mean and std
+        images -= img_mean
+        images /= img_std
+        return images, video_height, video_width
+
+
+
     @torch.inference_mode()
     def load_first_frame(self, inference_state, img_path, frame_idx=0, bbox=None):
         img, height, width = self._load_image_as_tensor(img_path, image_size=self.image_size, bbox=bbox)
@@ -356,7 +388,7 @@ class SAM2VideoPredictor(SAM2Base):
             prev_sam_mask_logits = prev_out["pred_masks"].to(device, non_blocking=True)
             # Clamp the scale of prev_sam_mask_logits to avoid rare numerical issues.
             prev_sam_mask_logits = torch.clamp(prev_sam_mask_logits, -32.0, 32.0)
-        current_out, _ = self._run_single_frame_inference(
+        current_out, _, _, _ = self._run_single_frame_inference(
             inference_state=inference_state,
             output_dict=obj_output_dict,  # run on the slice of a single object
             frame_idx=frame_idx,
@@ -756,6 +788,7 @@ class SAM2VideoPredictor(SAM2Base):
         video_W=None,
         seq=None,
         oracle_threshold=None,
+        prev_mask=None,
     ):  
 
         # out_frame_idx = frame_idx
@@ -820,6 +853,9 @@ class SAM2VideoPredictor(SAM2Base):
                 video_W=inference_state["video_width"],
                 seq=seq,
                 oracle_threshold=oracle_threshold,
+                prev_mask=prev_mask,
+                original_H=self.image_height_fr,
+                original_W=self.image_width_fr,
             )
 
             _, video_res_masks = self._get_orig_video_res_output(
@@ -1158,6 +1194,9 @@ class SAM2VideoPredictor(SAM2Base):
         video_W=None,
         seq=None,
         oracle_threshold=None,
+        prev_mask=None,
+        original_H=None,
+        original_W=None,
     ):
         """Run tracking on a single frame based on current inputs and previous memory."""
         # Retrieve correct image features
@@ -1192,6 +1231,9 @@ class SAM2VideoPredictor(SAM2Base):
             seq=seq,
             oracle_threshold=oracle_threshold,
             bbox=self.bbox,
+            prev_mask=prev_mask,
+            original_H=original_H,
+            original_W=original_W,
         )
 
         # optionally offload the output to CPU memory to save GPU space

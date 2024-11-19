@@ -7,6 +7,69 @@ import os
 from compute_iou import *
 
 
+from transformers import AutoProcessor, CLIPModel, AutoImageProcessor, AutoModel
+import faiss
+
+
+def extract_frames(video_path, output_folder, target_fps=12):
+    # Create VideoReader object
+    vid = cv2.VideoCapture(video_path)
+    original_fps = vid.get(cv2.CAP_PROP_FPS)  # Get original frames per second (fps) of the video
+    frame_count = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
+    frame_number = 0
+    save_frame_number = 0
+
+    # Calculate frame interval to match target fps
+    frame_interval = int(original_fps / target_fps) if original_fps > target_fps else 1
+
+    print(f"Original FPS: {original_fps}")
+    print(f"Target FPS: {target_fps}")
+    print(f"Frame interval for extraction: {frame_interval}")
+
+    while vid.isOpened():
+        ret, frame = vid.read()
+        if not ret:
+            break
+
+        # Save every nth frame to match target FPS
+        if frame_number % frame_interval == 0:
+            # Format frame number to be zero-padded (e.g., 0000, 0001, ...)
+            frame_name = f"{save_frame_number:04d}.jpg"
+            output_path = os.path.join(output_folder, frame_name)
+
+            # Save frame as an image
+            cv2.imwrite(output_path, frame)
+            print(f"Saved frame {frame_name}")
+            save_frame_number += 1
+
+        frame_number += 1
+
+    vid.release()
+    print("All frames extracted successfully.")
+
+    # # Create VideoReader object
+    # vid = cv2.VideoCapture(video_path)
+    # frame_count = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
+    # frame_number = 0
+
+    # while vid.isOpened():
+    #     ret, frame = vid.read()
+    #     if not ret:
+    #         break
+
+    #     # Format frame number to be zero-padded (e.g., 0000, 0001, ...)
+    #     frame_name = f"{frame_number:04d}.jpg"
+    #     output_path = os.path.join(output_folder, frame_name)
+
+    #     # Save frame as an image
+    #     cv2.imwrite(output_path, frame)
+    #     print(f"Saved frame {frame_name}")
+
+    #     frame_number += 1
+
+    # vid.release()
+
+
 def increase_bbox_area(H, W, min_row, min_col, max_row, max_col, factor=2):
     # Calculate the center of the original rectangle
     center_row = (min_row + max_row) / 2
@@ -75,6 +138,33 @@ def increase_bbox_to_square(H, W, min_row, min_col, max_row, max_col, factor=2):
 
     return int(new_min_row), int(new_min_col), int(new_max_row), int(new_max_col)
 
+def add_vector_to_index(embedding, index):
+    #convert embedding to numpy
+    vector = embedding.detach().cpu().numpy()
+    #Convert to float32 numpy
+    vector = np.float32(vector)
+    #Normalize vector: important to avoid wrong results when searching
+    faiss.normalize_L2(vector)
+    #Add to index
+    index.add(vector)
+
+def extract_features_dino(image):
+    processor_dino = AutoImageProcessor.from_pretrained('facebook/dinov2-base')
+    model_dino = AutoModel.from_pretrained('facebook/dinov2-base').to('cuda')
+
+    with torch.no_grad():
+        inputs = processor_dino(images=image, return_tensors="pt").to('cuda')
+        outputs = model_dino(**inputs)
+        image_features = outputs.last_hidden_state
+        return image_features.mean(dim=1)
+
+def normalizeL2(embeddings):
+    vector = embeddings.detach().cpu().numpy()
+    vector = np.float32(vector)
+    faiss.normalize_L2(vector)
+    return vector
+
+
 def get_full_size_mask(out_mask_logits, bbox, H, W):
     if bbox != None:
         min_row, min_col, max_row, max_col = bbox
@@ -130,7 +220,7 @@ def show_mask(mask, ax, obj_id=None, random_color=False, ann_frame_idx=0, to_sav
     final_path = os.path.join(DIR, str(ann_frame_idx) + '.png')
 
     ax.imshow(mask_image)
-    plt.savefig(final_path)
+    plt.savefig(final_path, pad_inches=0, bbox_inches='tight')
     
 def get_bounding_box(segmentation):
     cols, rows = np.where(segmentation == True)
@@ -182,6 +272,7 @@ def create_video_from_frames(dir_path, output_video='output_video.mp4', fps=5):
     video.release()
     print(f"Video created successfully: {output_video}")
 
+# extract_frames("/datagrid/personal/rozumrus/BP_dg/collected_videos/rolling_wallnuts.mov", "/datagrid/personal/rozumrus/BP_dg/collected_videos/rolling_wallnuts")
 # Example usage:
 # create_video_from_frames('/datagrid/personal/rozumrus/BP_dg/output_vot22ST/alfa0.0_nomem0_excl_EM0_OP16_L/ants1', 
 #     output_video='/datagrid/personal/rozumrus/BP_dg/output_vot22ST/ants1.mp4')

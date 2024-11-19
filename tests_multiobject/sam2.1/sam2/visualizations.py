@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 import os
+from PIL import Image, ImageOps
 
 def vis_area(x_points = [
     4, 9, 16, 25, 36, 49, 64, 81, 100, 121, 
@@ -63,6 +64,41 @@ def vis_regressed_parabola(file_path=None):
 
 	# Show the plot
 	plt.show()
+
+def vis_table():
+	# List of image file paths
+	base_path = "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/marathon"
+
+	image_paths = [
+	    "19.png", "18.png", "17.png", "16.png",
+	    "15.png", "14.png", "13.png", "0.png"
+	]
+
+	images = [Image.open(os.path.join(base_path, img)) for img in image_paths]
+
+	min_width = min(img.width for img in images)
+	min_height = min(img.height for img in images)
+	images = [img.resize((min_width, min_height)) for img in images]
+
+	# Dimensions for the table
+	columns = 2
+	rows = 4
+
+	# Create a blank canvas for the table
+	table_width = columns * min_width
+	table_height = rows * min_height
+	result = Image.new("RGB", (table_width, table_height), color=(255, 255, 255))  # White background
+
+	# Paste images into the table grid
+	for i, img in enumerate(images):
+	    x = (i % columns) * min_width  # Column position
+	    y = (i // columns) * min_height  # Row position
+	    result.paste(img, (x, y))
+
+
+	# Save or show the final image
+	result.save("marathon_baseline.jpg")
+	# result.show()
 
 
 def vis_oracle(file_path=None):
@@ -143,6 +179,7 @@ parser.add_argument('--vis_area', action="store_true")
 parser.add_argument('--vis_oracle', action="store_true")
 parser.add_argument('--vis_parabola', action="store_true")
 parser.add_argument('--path',default="output.png")
+parser.add_argument('--vis_table',action="store_true")
 args = parser.parse_args()
 
 if args.vis_area:
@@ -151,6 +188,8 @@ elif args.vis_parabola:
 	vis_regressed_parabola(file_path=args.path)
 elif args.vis_oracle:
 	vis_oracle(file_path=args.path)
+elif args.vis_table:
+	vis_table()
 
 
 # create_video()

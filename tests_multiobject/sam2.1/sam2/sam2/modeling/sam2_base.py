@@ -15,7 +15,16 @@ from sam2.modeling.sam.prompt_encoder import PromptEncoder
 from sam2.modeling.sam.transformer import TwoWayTransformer
 from sam2.modeling.sam2_utils import get_1d_sine_pe, MLP, select_closest_cond_frames
 from compute_iou import obatin_iou, get_nth_mask
-from utilities_eval import get_full_size_mask
+from utilities_eval import *
+import numpy as np 
+
+
+from PIL import Image
+from transformers import AutoProcessor, CLIPModel, AutoImageProcessor, AutoModel
+import faiss
+import os
+import torch.nn as nn
+
 
 # a large negative value as a placeholder score for missing objects
 NO_OBJ_SCORE = -1024.0
@@ -256,6 +265,30 @@ class SAM2Base(torch.nn.Module):
         else:
             self.obj_ptr_tpos_proj = torch.nn.Identity()
 
+    def compute_center_of_gravity(self, mask):
+        """
+        Compute the center of gravity of a binary segmentation mask.
+        """
+        coords = np.argwhere(mask > 0)
+        if len(coords) == 0:
+            return 0
+            # raise ValueError("Empty segmentation mask")
+        center_of_gravity = coords.mean(axis=0)
+        return center_of_gravity
+
+    def translate_mask(self, mask, translation):
+        """
+        Translate a binary segmentation mask by a given vector.
+        """
+        translated_mask = np.zeros_like(mask)
+        coords = np.argwhere(mask > 0)
+        for coord in coords:
+            new_coord = (coord + translation).astype(int)
+            if all(0 <= new_coord[i] < mask.shape[i] for i in range(len(mask.shape))):
+                translated_mask[tuple(new_coord)] = 1
+        return translated_mask
+
+
     def _forward_sam_heads(
         self,
         backbone_features,
@@ -269,6 +302,9 @@ class SAM2Base(torch.nn.Module):
         seq=None,
         oracle_threshold=None,
         bbox=None,
+        prev_mask=None,
+        H_original=None,
+        W_original=None,
     ):
         """
         Forward SAM prompt encoders and mask heads.
@@ -321,10 +357,11 @@ class SAM2Base(torch.nn.Module):
             sam_point_labels = point_inputs["point_labels"]
             assert sam_point_coords.size(0) == B and sam_point_labels.size(0) == B
         else:
+
             # If no points are provide, pad with an empty point (with label -1)
             sam_point_coords = torch.zeros(B, 1, 2, device=device)
             sam_point_labels = -torch.ones(B, 1, dtype=torch.int32, device=device)
-
+    
         # b) Handle mask prompts
         if mask_inputs is not None:
             # If mask_inputs is provided, downsize it into low-res mask input if needed
@@ -344,6 +381,7 @@ class SAM2Base(torch.nn.Module):
             # Otherwise, simply feed None (and SAM's prompt encoder will add
             # a learned `no_mask_embed` to indicate no mask input in this case).
             sam_mask_prompt = None
+
 
         sparse_embeddings, dense_embeddings = self.sam_prompt_encoder(
             points=(sam_point_coords, sam_point_labels),
@@ -391,6 +429,7 @@ class SAM2Base(torch.nn.Module):
         best_low_res_multimask_according_to_sam2 = None
 
         if multimask_output:
+            # import pdb; pdb.set_trace();
 
             if seq != None:
                 batch_inds = torch.arange(B, device=device)
@@ -448,7 +487,285 @@ class SAM2Base(torch.nn.Module):
                     miss = 1
                 
                 # print(f"For frame idx {frame_idx} the error is: {(max_oracle_iou - oracle_score_best_sam2_mask)*100: .2f}% and oracle_IoU {oracle_score_best_sam2_mask} and max {max_oracle_iou}")                
+            elif not (prev_mask is None):
 
+
+                best_iou_inds = torch.argmax(ious, dim=-1)
+                batch_inds = torch.arange(B, device=device)
+                low_res_masks = low_res_multimasks[batch_inds, 0].unsqueeze(1)
+
+                _, first_mask = self._get_orig_video_res_output_RR(
+                    device, video_H, video_W, low_res_masks
+                )
+
+                low_res_masks = low_res_multimasks[batch_inds, 1].unsqueeze(1)
+
+                _, second_mask = self._get_orig_video_res_output_RR(
+                    device, video_H, video_W, low_res_masks
+                )
+
+                low_res_masks = low_res_multimasks[batch_inds, 2].unsqueeze(1)
+
+                _, third_mask = self._get_orig_video_res_output_RR(
+                    device, video_H, video_W, low_res_masks
+                )
+
+
+
+                H, W = H_original, W_original
+
+                first_mask = get_full_size_mask(first_mask, bbox, H, W)
+                second_mask = get_full_size_mask(second_mask, bbox, H, W)
+                third_mask = get_full_size_mask(third_mask, bbox, H, W)
+
+                
+
+                min_row, min_col, max_row, max_col = get_bounding_box(first_mask)
+
+                img_pil = Image.open("/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/hand2/color/" + f"{frame_idx+1:0{8}d}.jpg")
+
+                first_img = img_pil.crop((min_row, min_col, max_row, max_col))
+
+
+                min_row, min_col, max_row, max_col = get_bounding_box(second_mask)
+
+                img_pil = Image.open("/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/hand2/color/" + f"{frame_idx+1:0{8}d}.jpg")
+
+                second_img = img_pil.crop((min_row, min_col, max_row, max_col))
+
+
+                min_row, min_col, max_row, max_col = get_bounding_box(third_mask)
+
+                img_pil = Image.open("/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/hand2/color/" + f"{frame_idx+1:0{8}d}.jpg")
+
+                third_img = img_pil.crop((min_row, min_col, max_row, max_col))
+
+
+                min_row, min_col, max_row, max_col = get_bounding_box(prev_mask)
+
+                img_pil = Image.open("/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/hand2/color/" + f"{frame_idx:0{8}d}.jpg")
+
+                source_img = img_pil.crop((min_row, min_col, max_row, max_col))
+
+                # first_img.save(f"saved_dino/{frame_idx+1:0{8}d}_first.jpg")
+                # second_img.save(f"saved_dino/{frame_idx+1:0{8}d}_second.jpg")
+                # third_img.save(f"saved_dino/{frame_idx+1:0{8}d}_third.jpg")
+
+
+
+                # if frame_idx+1 == 32:
+                #     first_img.save('32_first_img.png')
+                #     second_img.save('32_second_img.png')
+                #     third_img.save('32_third_img.png')
+
+                # if frame_idx+1 == 33:
+                #     first_img.save('33_first_img.png')
+                #     second_img.save('33_second_img.png')
+                #     third_img.save('33_third_img.png')
+
+                # if frame_idx+1 == 34:
+                #     first_img.save('34_first_img.png')
+                #     second_img.save('34_second_img.png')
+                #     third_img.save('34_third_img.png')
+
+
+
+                # first_img = (first_mask * 255).astype(np.uint8)
+                # first_img = Image.fromarray(first_img)
+
+                # second_img = (second_mask * 255).astype(np.uint8)
+                # second_img = Image.fromarray(second_img)
+
+                # third_img = (third_mask * 255).astype(np.uint8)
+                # third_img = Image.fromarray(third_img)
+
+                # source_img = (prev_mask * 255).astype(np.uint8)
+                # source_img = Image.fromarray(source_img)
+
+
+                images = [first_img, second_img, third_img]
+
+                processor = AutoImageProcessor.from_pretrained('facebook/dinov2-base')
+                model = AutoModel.from_pretrained('facebook/dinov2-base').to('cuda')
+                maxx, cnt, index_maxx = -1, 0, -1
+                
+                for img in images:
+                    with torch.no_grad():
+                        inputs1 = processor(images=img, return_tensors="pt").to(device)
+                        outputs1 = model(**inputs1)
+                        image_features1 = outputs1.last_hidden_state
+                        image_features1 = image_features1.mean(dim=1)
+
+                    with torch.no_grad():
+                        inputs2 = processor(images=source_img, return_tensors="pt").to(device)
+                        outputs2 = model(**inputs2)
+                        image_features2 = outputs2.last_hidden_state
+                        image_features2 = image_features2.mean(dim=1)
+
+                    cos = nn.CosineSimilarity(dim=0)
+                    sim = cos(image_features1[0],image_features2[0]).item()
+                    sim = (sim+1)/2
+
+                    print('Similarity:', sim)
+                    if sim > maxx:
+                        maxx = sim
+                        index_maxx = cnt 
+
+                    cnt+=1
+
+
+                # device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
+                # processor_dino = AutoImageProcessor.from_pretrained('facebook/dinov2-base')
+                # model_dino = AutoModel.from_pretrained('facebook/dinov2-base').to(device)
+
+                index_dino = faiss.IndexFlatL2(768)
+
+                for img in images:
+                    # print(image_path)
+                    img = img.convert('RGB')
+                    # clip_features = extract_features_clip(img)
+                    # add_vector_to_index(clip_features,index_clip)
+                    dino_features = extract_features_dino(img)
+                    add_vector_to_index(dino_features,index_dino)
+
+                faiss.write_index(index_dino,"dino.index")
+
+
+                image = source_img
+
+                device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
+
+                processor_dino = AutoImageProcessor.from_pretrained('facebook/dinov2-base')
+                model_dino = AutoModel.from_pretrained('facebook/dinov2-base').to('cuda')
+
+                with torch.no_grad():
+                # print(processor_dino)
+                    inputs_dino = processor_dino(images=image, return_tensors="pt").to('cuda')
+                    outputs_dino = model_dino(**inputs_dino)
+                    image_features_dino = outputs_dino.last_hidden_state
+
+                    image_features_dino = image_features_dino.mean(dim=1)
+
+                image_features_dino = normalizeL2(image_features_dino)
+                # image_features_clip = normalizeL2(image_features_clip)
+
+                #Search the top 5 images
+                # index_clip = faiss.read_index("clip.index")
+                index_dino = faiss.read_index("dino.index")
+
+                #Get distance and indexes of images associated
+                d_dino,i_dino = index_dino.search(image_features_dino,3)
+
+                print(i_dino, d_dino)
+
+                # import pdb; pdb.set_trace()
+
+                seq="hand2"
+
+                IoU_with_prev_for_mask1 = obatin_iou(first_mask, get_nth_mask(seq, frame_idx))
+                IoU_with_prev_for_mask2 = obatin_iou(second_mask, get_nth_mask(seq, frame_idx))
+                IoU_with_prev_for_mask3 = obatin_iou(third_mask, get_nth_mask(seq, frame_idx))
+
+                if IoU_with_prev_for_mask1 > IoU_with_prev_for_mask2 and IoU_with_prev_for_mask1 > IoU_with_prev_for_mask3:
+                    print(0)
+                elif IoU_with_prev_for_mask2 > IoU_with_prev_for_mask1 and IoU_with_prev_for_mask2 > IoU_with_prev_for_mask3:
+                    print(1)
+                else:
+                    print(2)
+
+                print(IoU_with_prev_for_mask1, IoU_with_prev_for_mask2, IoU_with_prev_for_mask3, frame_idx+1)
+
+                best_iou_inds = i_dino[0][index_maxx]
+
+
+
+
+                # IoU_with_prev_for_mask1 = obatin_iou(first_mask, prev_mask)
+                # IoU_with_prev_for_mask2 = obatin_iou(second_mask, prev_mask)
+                # IoU_with_prev_for_mask3 = obatin_iou(third_mask, prev_mask)
+
+
+
+                # cog1 = self.compute_center_of_gravity(prev_mask)
+                # cog2 = self.compute_center_of_gravity(first_mask)
+
+                # # Align mask2 to mask1
+                # translation = cog2 - cog1
+                # aligned_mask2 = self.translate_mask(prev_mask, translation)
+
+                # IoU_with_prev_for_mask1 = obatin_iou(aligned_mask2, first_mask)
+
+                # cog1 = self.compute_center_of_gravity(prev_mask)
+                # cog2 = self.compute_center_of_gravity(second_mask)
+
+                # # Align mask2 to mask1
+                # translation = cog2 - cog1
+                # aligned_mask2 = self.translate_mask(prev_mask, translation)
+
+                # IoU_with_prev_for_mask2 = obatin_iou(aligned_mask2, second_mask)
+
+                # cog1 = self.compute_center_of_gravity(prev_mask)
+                # cog2 = self.compute_center_of_gravity(third_mask)
+
+                # # Align mask2 to mask1
+                # translation = cog2 - cog1
+                # aligned_mask2 = self.translate_mask(prev_mask, translation)
+
+                # IoU_with_prev_for_mask3 = obatin_iou(aligned_mask2, third_mask)
+
+
+
+                # print(IoU_with_prev_for_mask1, IoU_with_prev_for_mask2, IoU_with_prev_for_mask3)
+                # print(ious)
+                # print(obatin_iou(first_mask, prev_mask), obatin_iou(second_mask, prev_mask), obatin_iou(third_mask, prev_mask))
+
+
+
+                # best_idx_sam2 = torch.argmax(ious, dim=-1)
+
+                # if best_idx_sam2 == 0:
+                #     best_sam2_mask = IoU_with_prev_for_mask1
+                # elif best_idx_sam2 == 1:
+                #     best_sam2_mask = IoU_with_prev_for_mask2
+                # else:
+                #     best_sam2_mask = IoU_with_prev_for_mask3
+
+                # #print(obatin_iou(first_mask, prev_mask), obatin_iou(second_mask, prev_mask), obatin_iou(third_mask, prev_mask))
+
+                # # if best_sam2_mask > 0.5:
+                # #     best_iou_inds= best_iou_inds
+                # # else:
+                # if IoU_with_prev_for_mask1 > IoU_with_prev_for_mask2+0.05 and IoU_with_prev_for_mask1 > IoU_with_prev_for_mask3+0.05 and obatin_iou(first_mask, prev_mask) > 0.02 and ious[0][0] > 0.1:
+                #     best_iou_inds = 0
+                # elif IoU_with_prev_for_mask2 > IoU_with_prev_for_mask1+0.05 and IoU_with_prev_for_mask2 > IoU_with_prev_for_mask3+0.05 and obatin_iou(second_mask, prev_mask) > 0.02 and ious[0][1] > 0.1:
+                #     best_iou_inds = 1
+                # elif IoU_with_prev_for_mask3 > IoU_with_prev_for_mask1+0.05 and IoU_with_prev_for_mask3 > IoU_with_prev_for_mask2+0.05 and obatin_iou(third_mask, prev_mask) > 0.02 and ious[0][2] > 0.1:
+                #     best_iou_inds = 2
+
+                # print("picked ", best_iou_inds)
+
+
+                # import pdb; pdb.set_trace()
+
+                # best_idx_sam2 = torch.argmax(ious, dim=-1)
+
+                # if best_idx_sam2 == 0:
+                #     best_sam2_mask = IoU_with_prev_for_mask1
+                # elif best_idx_sam2 == 1:
+                #     best_sam2_mask = IoU_with_prev_for_mask2
+                # else:
+                #     best_sam2_mask = IoU_with_prev_for_mask3
+
+                # if best_sam2_mask > 0.1:
+                #     best_iou_inds = best_idx_sam2
+                # elif IoU_with_prev_for_mask1> 0.1:
+                #     best_iou_inds = 0
+                # elif IoU_with_prev_for_mask2 > 0.1:
+                #     best_iou_inds = 1
+                # elif IoU_with_prev_for_mask3 > 0.1: 
+                #     best_iou_inds = 2
+                # else:
+                #     best_iou_inds = best_idx_sam2
             else:
                 best_iou_inds = torch.argmax(ious, dim=-1) 
 
@@ -480,6 +797,7 @@ class SAM2Base(torch.nn.Module):
                 obj_ptr = lambda_is_obj_appearing * obj_ptr
             obj_ptr = obj_ptr + (1 - lambda_is_obj_appearing) * self.no_obj_ptr
 
+        
         return (
             low_res_multimasks,
             high_res_multimasks,
@@ -897,6 +1215,8 @@ class SAM2Base(torch.nn.Module):
                 *maskmem_features.shape
             )
 
+        # import pdb; pdb.set_trace()
+
         return maskmem_features, maskmem_pos_enc
 
     def _track_step(
@@ -918,6 +1238,9 @@ class SAM2Base(torch.nn.Module):
         seq=None,
         oracle_threshold=None,
         bbox=None,
+        prev_mask=None,
+        H_original=None,
+        W_original=None,
     ):
         current_out = {"point_inputs": point_inputs, "mask_inputs": mask_inputs}
         # High-resolution feature maps for the SAM head, reshape (HW)BC => BCHW
@@ -969,6 +1292,9 @@ class SAM2Base(torch.nn.Module):
                 seq=seq,
                 oracle_threshold=oracle_threshold,
                 bbox=bbox,
+                prev_mask=prev_mask,
+                H_original=H_original,
+                W_original=W_original,
             )
 
         return current_out, sam_outputs, high_res_features, pix_feat
@@ -1025,6 +1351,9 @@ class SAM2Base(torch.nn.Module):
         seq=None,
         oracle_threshold=None,
         bbox=None,
+        prev_mask=None,
+        original_H=None,
+        original_W=None,
     ):  
         self.memory_temporal_stride_for_eval = memory_stride
 
@@ -1046,6 +1375,9 @@ class SAM2Base(torch.nn.Module):
             seq,
             oracle_threshold,
             bbox,
+            prev_mask,
+            original_H,
+            original_W,
         )
 
 

@@ -34,8 +34,8 @@ def parse_args():
     parser.add_argument('--double_memory_bank', action="store_true")
     parser.add_argument('--oracle_threshold', type=float, default=20)
     parser.add_argument('--uncroped_mask_for_double_MB', action="store_true")
-    parser.add_argument('--use_prev_mask', action="store_true")
     parser.add_argument('--oracle', action="store_true")
+    parser.add_argument('--prompted_sequence')
 
     args = parser.parse_args()
 
@@ -45,15 +45,17 @@ def parse_args():
     return (args.exclude_empty_masks, args.vis_out, args.memory_stride, 
     args.crop_gt, args.factor, args.use_prev_box, args.use_square_box, 
     args.no_mask_set_larger_prev_bbox, args.no_mask_set_whole_image, 
-    args.double_memory_bank, args.uncroped_mask_for_double_MB, args.oracle, args.oracle_threshold, args.use_prev_mask, args.sequences)
+    args.double_memory_bank, args.uncroped_mask_for_double_MB, args.oracle, args.oracle_threshold, args.sequences)
 
 (exclude_empty_masks, vis_out, memory_stride, 
 crop_gt, factor, use_prev_box, use_square_box, 
 no_mask_set_larger_prev_bbox, no_mask_set_whole_image, 
-double_memory_bank, uncroped_mask_for_double_MB, oracle, oracle_threshold, use_prev_mask, sequences) = parse_args()
+double_memory_bank, uncroped_mask_for_double_MB, oracle, oracle_threshold, sequences) = parse_args()
 
 if sequences != None:
     SEQ = sequences
+
+SEQ=["rolling_wallnuts"]
 
 def run_eval(seq):
     sam2_checkpoint = "checkpoints/sam2.1_hiera_large.pt" 
@@ -62,40 +64,27 @@ def run_eval(seq):
     # model_cfg = "configs/sam2/sam2_hiera_l.yaml" 
 
     predictor = build_sam2_video_predictor(model_cfg, sam2_checkpoint, device='cuda')
-    video_dir = "/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/" + seq + "/color"
+    video_dir = "/datagrid/personal/rozumrus/BP_dg/collected_videos/rolling_wallnuts" #"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/" + seq + "/color"
     output_dir = "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + str(seq) + "_oracle" if oracle else "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + str(seq) 
     frame_names = load_frames(video_dir, double_memory_bank)
     inference_state = predictor.init_state()
-    mask_first_frame = get_nth_mask(seq, 0)
-    H, W = mask_first_frame.shape 
+    # mask_first_frame = get_nth_mask(seq, 0)
+    W, H = Image.open(os.path.join(video_dir, '0000.jpg')).size
     bbox = None
     prev_mask = None
-    USE_PREV_BOX = use_prev_box
 
     if crop_gt or use_prev_box:
-        min_row, min_col, max_row, max_col = get_bounding_box(mask_first_frame)
-
-        area = abs(min_row-max_row) * abs(min_col-max_col)
-
-        print(min_row, min_col, max_row, max_col, area / (H*W*1.0), H, W)
+        min_row, min_col, max_row, max_col = [756,159,984,368] #get_bounding_box(mask_first_frame)
 
         if use_square_box:
             min_col, min_row, max_col, max_row = increase_bbox_to_square(H, W, min_col, min_row, max_col, max_row, factor=factor)
         else:
             min_col, min_row, max_col, max_row = increase_bbox_area(H, W, min_col, min_row, max_col, max_row, factor=factor)
 
-
-        area = abs(min_row-max_row) * abs(min_col-max_col)
-
-        print(min_row, min_col, max_row, max_col, area / (H*W*1.0))
-        
-        # if area / (H*W*1.0) >= 0.1:
-        #     USE_PREV_BOX = False
-        # else:
         bbox = (min_row, min_col, max_row, max_col)
-        mask_first_frame = mask_first_frame[min_col:max_col, min_row:max_row]
+        # mask_first_frame = mask_first_frame[min_col:max_col, min_row:max_row]
 
-    image_path = os.path.join(video_dir, '00000001.jpg')
+    image_path = os.path.join(video_dir, '0000.jpg')
     start_idx = 1
 
     if double_memory_bank:
@@ -106,6 +95,7 @@ def run_eval(seq):
             obj_id=1,
             mask=np.array(mask_first_frame),
         )
+
 
         mask_full_size = get_full_size_mask(out_mask_logits, bbox, H, W)
 
@@ -122,13 +112,31 @@ def run_eval(seq):
             vis(get_full_size_mask(out_mask_logits, None, H, W), [1], 0, 
                 image_path, "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/full_resol_" + seq)
     else:
+        bbox_wallnuts = [756,159,984,368]
+        second_wallnut = [558,313,773,536]
+
         predictor.load_first_frame(inference_state, image_path, bbox=bbox,frame_idx=0)
-        _, _, out_mask_logits = predictor.add_new_mask(
+        # _, _, out_mask_logits = predictor.add_new_points_or_box(
+        #     inference_state=inference_state,
+        #     frame_idx=0,
+        #     obj_id=1,
+        #     labels=-1,
+        #     box=[418,209,654,436],
+        # )
+
+        _, _, out_mask_logits = predictor.add_new_points_or_box(
             inference_state=inference_state,
             frame_idx=0,
             obj_id=1,
-            mask=np.array(mask_first_frame),
+            box=second_wallnut,
         )
+
+        # _, _, out_mask_logits = predictor.add_new_mask(
+        #     inference_state=inference_state,
+        #     frame_idx=0,
+        #     obj_id=1,
+        #     mask=np.array(mask_first_frame),
+        # )
 
         mask_full_size = get_full_size_mask(out_mask_logits, bbox, H, W)
 
@@ -146,21 +154,21 @@ def run_eval(seq):
     prev_bbox = None
     missed_best_mask = 0
 
-    if USE_PREV_BOX or crop_gt:
+    if use_prev_box or crop_gt:
         prev_bbox = (min_row, min_col, max_row, max_col)
 
     for out_frame_idx in tqdm(range(start_idx, len(frame_names), start_idx)):
         # print(out_frame_idx)
         image_path = os.path.join(video_dir, frame_names[out_frame_idx])
 
-        if vis_out and USE_PREV_BOX:
+        if vis_out and use_prev_box:
             img_pil_full_res = Image.open(image_path) 
             img_pil = img_pil_full_res.crop(prev_bbox)
             img_pil.save(output_dir + '/cropped' + str(out_frame_idx) +'.png')
 
         bbox = None
 
-        if USE_PREV_BOX:
+        if use_prev_box:
             bbox = prev_bbox
 
         if crop_gt:
@@ -185,9 +193,6 @@ def run_eval(seq):
         if oracle:
             seq_to_pass = seq
 
-        if not use_prev_mask:
-            prev_mask = None
-
         out_frame_idx, out_obj_ids, out_mask_logits, out_curr, miss, video_res_masks_second_best = predictor.track(inference_state, 
             exclude_empty_masks=exclude_empty_masks, 
             memory_stride=memory_stride, 
@@ -197,7 +202,7 @@ def run_eval(seq):
             video_W=W,
             seq=seq_to_pass,
             oracle_threshold=oracle_threshold,
-            prev_mask=prev_mask)
+            prev_mask=None)
 
         missed_best_mask += miss
 
@@ -248,7 +253,7 @@ def run_eval(seq):
 
 
 
-        if USE_PREV_BOX:
+        if use_prev_box:
             bbox = get_bounding_box(mask_full_size)
 
             if bbox != None:
@@ -286,9 +291,7 @@ def vis(mask_full_size, out_obj_ids, ann_frame_idx, image, to_save_path):
     image = Image.open(image)
     plt.clf()
     plt.cla()
-    plt.axis('off')
     plt.imshow(image)
-
 
     show_mask(mask_full_size, plt.gca(), obj_id=out_obj_ids[0], ann_frame_idx=ann_frame_idx, to_save_path=to_save_path)
 
@@ -303,7 +306,7 @@ for seq in SEQ:
 
     total_miss += missed_masks_perc
 
-    print(f"IoU for {seq} is: {iou_curr}")
+    # print(f"IoU for {seq} is: {iou_curr}")
 
 if sequences == None:
     for iou_i in all_ious:

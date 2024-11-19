@@ -143,13 +143,19 @@ class MaskDecoder(nn.Module):
             high_res_features=high_res_features,
         )
 
+        # multimask_output = False
+        # self.dynamic_multimask_via_stability = False
+
         # Select the correct mask or masks for output
         if multimask_output:
+            # print("multi")
             masks = masks[:, 1:, :, :]
             iou_pred = iou_pred[:, 1:]
         elif self.dynamic_multimask_via_stability and not self.training:
+            # print("realy")
             masks, iou_pred = self._dynamic_multimask_via_stability(masks, iou_pred)
         else:
+            # print("single")
             masks = masks[:, 0:1, :, :]
             iou_pred = iou_pred[:, 0:1]
 
@@ -215,6 +221,7 @@ class MaskDecoder(nn.Module):
         iou_token_out = hs[:, s, :]
         mask_tokens_out = hs[:, s + 1 : (s + 1 + self.num_mask_tokens), :]
 
+
         # Upscale mask embeddings and predict masks using the mask tokens
         src = src.transpose(1, 2).view(b, c, h, w)
         if not self.use_high_res_features:
@@ -243,6 +250,10 @@ class MaskDecoder(nn.Module):
         else:
             # Obj scores logits - default to 10.0, i.e. assuming the object is present, sigmoid(10)=1
             object_score_logits = 10.0 * iou_pred.new_ones(iou_pred.shape[0], 1)
+
+        # import pdb; pdb.set_trace()
+
+        # print(mask_tokens_out.shape, "TOkens")
 
         return masks, iou_pred, mask_tokens_out, object_score_logits
 
@@ -280,6 +291,11 @@ class MaskDecoder(nn.Module):
         # The mask from singlemask output token 0 and its stability score
         singlemask_logits = all_mask_logits[:, 0:1, :, :]
         singlemask_iou_scores = all_iou_scores[:, 0:1]
+        
+        # import pdb; pdb.set_trace();
+
+        # exit(1)
+
         stability_scores = self._get_stability_scores(singlemask_logits)
         is_stable = stability_scores >= self.dynamic_multimask_stability_thresh
 

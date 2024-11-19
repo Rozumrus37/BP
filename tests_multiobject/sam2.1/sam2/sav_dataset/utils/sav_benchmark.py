@@ -357,7 +357,11 @@ def benchmark(
         # Validate folders
         validated = True
         gt_videos = os.listdir(gt_root)
+        # gt_videos = sorted(gt_videos)[:143]
+
         mask_videos = os.listdir(mask_root)
+        # mask_videos =  sorted(mask_videos)[:110] #] #"sav_000262"
+        # print(mask_videos)
 
         # if the user passed the root directory instead of Annotations
         if len(gt_videos) != len(mask_videos):

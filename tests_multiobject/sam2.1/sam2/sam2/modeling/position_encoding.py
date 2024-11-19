@@ -109,6 +109,9 @@ class PositionEmbeddingSine(nn.Module):
         ).flatten(3)
         pos = torch.cat((pos_y, pos_x), dim=3).permute(0, 3, 1, 2)
         self.cache[cache_key] = pos[0]
+
+        # import pdb; pdb.set_trace()
+        
         return pos
 
 
