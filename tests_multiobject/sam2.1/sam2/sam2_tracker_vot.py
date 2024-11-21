@@ -34,11 +34,11 @@ class SAM2Tracker(object):
         self.predictor = build_sam2_video_predictor(model_cfg, sam2_checkpoint) 
 
         self.inference_state = self.predictor.init_state()
-        self.no_mask_set_full_image = True
-        self.memory_stride = 7
-        self.prev_mask_increase_when_empty = True
+        self.no_mask_set_full_image = False
+        self.memory_stride = 1
+        self.prev_mask_increase_when_empty = False
         self.factor = 100
-        self.exclude_empty_masks = True
+        self.exclude_empty_masks = False
         self.use_RR_sam2 = False
         self.prev_bbox = None
 

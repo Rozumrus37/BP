@@ -10,7 +10,14 @@ from utilities_eval import *
 import argparse
 from tqdm import tqdm
 
+from transformers import AutoProcessor, CLIPModel, AutoImageProcessor, AutoModel
+import faiss
+import torch.nn as nn
+
 torch.autocast(device_type="cuda", dtype=torch.bfloat16).__enter__()
+
+processor_dino = AutoImageProcessor.from_pretrained('facebook/dinov2-giant')
+model_dino = AutoModel.from_pretrained('facebook/dinov2-giant').to('cuda')
 
 if torch.cuda.get_device_properties(0).major >= 8:
     # turn on tfloat32 for Ampere GPUs (https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices)
@@ -71,6 +78,7 @@ def run_eval(seq):
     bbox = None
     prev_mask = None
     USE_PREV_BOX = use_prev_box
+    
 
     if crop_gt or use_prev_box:
         min_row, min_col, max_row, max_col = get_bounding_box(mask_first_frame)
@@ -132,7 +140,7 @@ def run_eval(seq):
 
         mask_full_size = get_full_size_mask(out_mask_logits, bbox, H, W)
 
-    prev_mask = mask_full_size
+    prev_mask = [mask_full_size]
 
     if vis_out:
         vis(mask_full_size, [1], 0, os.path.join(video_dir, frame_names[0]), output_dir)
@@ -148,6 +156,8 @@ def run_eval(seq):
 
     if USE_PREV_BOX or crop_gt:
         prev_bbox = (min_row, min_col, max_row, max_col)
+
+    previous_masks = [prev_mask]
 
     for out_frame_idx in tqdm(range(start_idx, len(frame_names), start_idx)):
         # print(out_frame_idx)
@@ -186,7 +196,9 @@ def run_eval(seq):
             seq_to_pass = seq
 
         if not use_prev_mask:
+            previous_masks = None 
             prev_mask = None
+
 
         out_frame_idx, out_obj_ids, out_mask_logits, out_curr, miss, video_res_masks_second_best = predictor.track(inference_state, 
             exclude_empty_masks=exclude_empty_masks, 
@@ -197,13 +209,26 @@ def run_eval(seq):
             video_W=W,
             seq=seq_to_pass,
             oracle_threshold=oracle_threshold,
-            prev_mask=prev_mask)
+            prev_mask=prev_mask, #previous_masks,#prev_mask, , #
+            processor_dino=processor_dino,
+            model_dino=model_dino)
 
         missed_best_mask += miss
 
         mask_full_size = get_full_size_mask(out_mask_logits, bbox, H, W)
         
         mask_full_size_second_best = None 
+
+
+        if out_frame_idx == 19:
+
+
+
+            # Save the array to a text file
+            np.savetxt('array.txt', mask_full_size, fmt='%d')
+
+            print(mask_full_size.shape)
+            # print(mask_full_size)
 
         if video_res_masks_second_best != None:
             mask_full_size_second_best = get_full_size_mask(video_res_masks_second_best, bbox, H, W) 
@@ -233,7 +258,9 @@ def run_eval(seq):
 
         
         masks_all.append(mask_full_size)
-        prev_mask = mask_full_size
+        prev_mask = [mask_full_size]
+        previous_masks = [mask_first_frame] + masks_all[-6:]
+
 
         if vis_out:
             if oracle:
