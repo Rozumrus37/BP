@@ -192,7 +192,7 @@ def run_eval(seq):
 
         seq_to_pass = None
 
-        if oracle:
+        if oracle or True:
             seq_to_pass = seq
 
         if not use_prev_mask:
@@ -218,17 +218,6 @@ def run_eval(seq):
         mask_full_size = get_full_size_mask(out_mask_logits, bbox, H, W)
         
         mask_full_size_second_best = None 
-
-
-        if out_frame_idx == 19:
-
-
-
-            # Save the array to a text file
-            np.savetxt('array.txt', mask_full_size, fmt='%d')
-
-            print(mask_full_size.shape)
-            # print(mask_full_size)
 
         if video_res_masks_second_best != None:
             mask_full_size_second_best = get_full_size_mask(video_res_masks_second_best, bbox, H, W) 
@@ -332,11 +321,11 @@ for seq in SEQ:
 
     print(f"IoU for {seq} is: {iou_curr}")
 
-if sequences == None:
-    for iou_i in all_ious:
-        print(f"{iou_i}")
+# if sequences == None:
+for iou_i in all_ious:
+    print(f"{iou_i}")
 
-    print(f"The mean after processing seqs is: {np.array(all_ious).mean()}")
+print(f"The mean after processing seqs is: {np.array(all_ious).mean()}")
 
 if oracle:
     print("Mean miss: ", total_miss / len(SEQ))

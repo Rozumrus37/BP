@@ -434,7 +434,7 @@ class SAM2Base(torch.nn.Module):
         if multimask_output:
             # import pdb; pdb.set_trace();
 
-            if seq != None:
+            if seq != None and False:
                 batch_inds = torch.arange(B, device=device)
                 low_res_masks = low_res_multimasks[batch_inds, 0].unsqueeze(1)
 
@@ -492,7 +492,6 @@ class SAM2Base(torch.nn.Module):
                 # print(f"For frame idx {frame_idx} the error is: {(max_oracle_iou - oracle_score_best_sam2_mask)*100: .2f}% and oracle_IoU {oracle_score_best_sam2_mask} and max {max_oracle_iou}")                
             elif not (prev_mask is None):
 
-
                 best_iou_inds = torch.argmax(ious, dim=-1)
                 batch_inds = torch.arange(B, device=device)
                 low_res_masks = low_res_multimasks[batch_inds, 0].unsqueeze(1)
@@ -513,24 +512,20 @@ class SAM2Base(torch.nn.Module):
                     device, video_H, video_W, low_res_masks
                 )
 
-
-
                 H, W = H_original, W_original
 
                 first_mask = get_full_size_mask(first_mask, bbox, H, W)
                 second_mask = get_full_size_mask(second_mask, bbox, H, W)
                 third_mask = get_full_size_mask(third_mask, bbox, H, W)
 
-                seq = "hand2"
 
-                index_maxx = best_iou_inds
-                
-                if not (get_bounding_box(first_mask) is None):# and not (get_bounding_box(prev_mask) is None):
+                if np.any(prev_mask[0] > 0) and np.any(first_mask > 0) and np.any(second_mask > 0) and np.any(third_mask > 0):
+                    index_maxx = best_iou_inds
+                    
+                    # if not (get_bounding_box(first_mask) is None):# and not (get_bounding_box(prev_mask) is None):
+                    of_mask = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", prev_mask[0], frame_idx+1, seq=seq)
 
-                    seq="motocross1"
-                    of_mask = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", prev_mask[0], frame_idx+1)
-
-                    print(of_mask.shape, first_mask.shape)
+                    # print(of_mask.shape, first_mask.shape)
                     iou1 = obatin_iou(first_mask, of_mask)
                     iou2 = obatin_iou(second_mask, of_mask)
                     iou3 = obatin_iou(third_mask, of_mask)
@@ -541,343 +536,9 @@ class SAM2Base(torch.nn.Module):
                         index_maxx = 1
                     elif iou3 > iou1 and iou3 > iou2:
                         index_maxx = 2
+           
+                    best_iou_inds = index_maxx #i_dino[0][index_maxx]
 
-                    # seq="drone1"
-                    # of_mask1 = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", first_mask, frame_idx+1)
-                    # of_mask2 = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", second_mask, frame_idx+1)
-                    # of_mask3 = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", third_mask, frame_idx+1)
-
-
-                    # # print(of_mask.shape, first_mask.shape)
-                    # iou1 = obatin_iou(prev_mask[0], of_mask1)
-                    # iou2 =obatin_iou(prev_mask[0], of_mask2)
-                    # iou3 = obatin_iou(prev_mask[0], of_mask3)
-
-                    # if iou1 > iou2 and iou1 > iou3:
-                    #     index_maxx = 0
-                    # elif iou2 > iou1 and iou2 > iou3:
-                    #     index_maxx = 1
-                    # elif iou3 > iou1 and iou3 > iou2:
-                    #     index_maxx = 2
-
-
-
-
-                    # min_row, min_col, max_row, max_col = get_bounding_box(first_mask)
-
-                    # img_pil = Image.open(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg")
-
-                    # first_mask = np.repeat(first_mask[:, :, np.newaxis], 3, axis=2)
-
-                    # image_array = np.array(img_pil)
-                    # masked_image_array = image_array * first_mask
-
-                    # # Convert back to a PIL image
-                    # masked_image = Image.fromarray(masked_image_array)
-
-                    # first_img = masked_image.crop((min_row, min_col, max_row, max_col))
-
-                     
-                    # min_row, min_col, max_row, max_col = get_bounding_box(second_mask)
-
-                    # img_pil = Image.open(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg")
-
-                    # second_mask = np.repeat(second_mask[:, :, np.newaxis], 3, axis=2)
-
-                    # image_array = np.array(img_pil)
-                    # masked_image_array = image_array * second_mask
-
-                    # # Convert back to a PIL image
-                    # masked_image = Image.fromarray(masked_image_array)
-
-                    # second_img = masked_image.crop((min_row, min_col, max_row, max_col))
-
-
-
-                    # min_row, min_col, max_row, max_col = get_bounding_box(third_mask)
-
-                    # img_pil = Image.open(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg")
-
-                    # third_mask = np.repeat(third_mask[:, :, np.newaxis], 3, axis=2)
-
-                    # image_array = np.array(img_pil)
-                    # masked_image_array = image_array * third_mask
-
-                    # # Convert back to a PIL image
-                    # masked_image = Image.fromarray(masked_image_array)
-
-                    # third_img = masked_image.crop((min_row, min_col, max_row, max_col))
-
-
-                    # prev_imgs = []
-                    # cnt=0
-
-                    # for mask_i in prev_mask:
-                    #     # print(cnt, len(prev_mask), mask_i.shape)
-                    #     min_row, min_col, max_row, max_col = get_bounding_box(mask_i)
-
-                    #     img_pil = Image.open(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx-cnt:0{8}d}.jpg")
-
-                    #     image_array = np.array(img_pil)
-
-                    #     mask_i = np.repeat(mask_i[:, :, np.newaxis], 3, axis=2)
-
-                    #     masked_image_array = image_array * mask_i
-
-                    #     # print("masked image array: ", masked_image_array.shape)
-
-                    #     # Convert back to a PIL image
-                    #     masked_image = Image.fromarray(masked_image_array.astype(np.uint8))
-
-                    #     source_img = masked_image.crop((min_row, min_col, max_row, max_col))
-
-                    #     prev_imgs.append(source_img)
-
-                    #     cnt+=1
-
-
-                    # first_img.save(f"saved_dino/{frame_idx+1:0{8}d}_first.jpg")
-                    # second_img.save(f"saved_dino/{frame_idx+1:0{8}d}_second.jpg")
-                    # third_img.save(f"saved_dino/{frame_idx+1:0{8}d}_third.jpg")
-
-
-
-                    # if frame_idx+1 == 32:
-                    #     first_img.save('32_first_img.png')
-                    #     second_img.save('32_second_img.png')
-                    #     third_img.save('32_third_img.png')
-
-                    # if frame_idx+1 == 33:
-                    #     first_img.save('33_first_img.png')
-                    #     second_img.save('33_second_img.png')
-                    #     third_img.save('33_third_img.png')
-
-                    # if frame_idx+1 == 34:
-                    #     first_img.save('34_first_img.png')
-                    #     second_img.save('34_second_img.png')
-                    #     third_img.save('34_third_img.png')
-
-
-
-                    # first_img = (first_mask * 255).astype(np.uint8)
-                    # first_img = Image.fromarray(first_img)
-
-                    # second_img = (second_mask * 255).astype(np.uint8)
-                    # second_img = Image.fromarray(second_img)
-
-                    # third_img = (third_mask * 255).astype(np.uint8)
-                    # third_img = Image.fromarray(third_img)
-
-                    # source_img = (prev_mask * 255).astype(np.uint8)
-                    # source_img = Image.fromarray(source_img)
-
-
-                    # images = [first_img, second_img, third_img]
-
-                    
-                    # maxx, cnt, index_maxx = -1, 0, -1
-                
-                    # for img in images:
-
-                    #     summ = 0
-                    #     cnt_inner = 0
-                    #     for source_img in prev_imgs:  
-                    #         with torch.no_grad():
-                    #             inputs1 = processor_dino(images=img, return_tensors="pt").to(device)
-                    #             outputs1 = model_dino(**inputs1)
-                    #             image_features1 = outputs1.last_hidden_state
-                    #             image_features1 = image_features1.mean(dim=1)
-
-                    #         # import pdb; pdb.set_trace()
-
-
-                    #         with torch.no_grad():
-                    #             inputs2 = processor_dino(images=source_img, return_tensors="pt").to(device)
-                    #             outputs2 = model_dino(**inputs2)
-                    #             image_features2 = outputs2.last_hidden_state
-                    #             image_features2 = image_features2.mean(dim=1)
-
-                    #         cos = nn.CosineSimilarity(dim=0)
-                    #         sim = cos(image_features1[0],image_features2[0]).item()
-                    #         sim = (sim+1)/2
-
-                    #         if cnt_inner == 0 or cnt_inner == len(prev_imgs)-1:
-                    #             sim *= 2 
-
-                    #         summ += sim
-                    #         cnt_inner += 1
-
-                    #     summ /= len(prev_imgs)
-
-                    #     if summ > maxx:
-                    #         maxx = summ
-                    #         index_maxx = cnt 
-
-                    #     print('Similarity:', summ)
-
-
-                    #     cnt+=1
-
-                    # print(f"chosen for {frame_idx+1} is {index_maxx}")
-
-
-                   
-
-                    # import pdb; pdb.set_trace()
-
-                # import pdb; pdb.
-                # device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
-                # processor_dino = AutoImageProcessor.from_pretrained('facebook/dinov2-base')
-                # model_dino = AutoModel.from_pretrained('facebook/dinov2-base').to(device)
-
-                # index_dino = faiss.IndexFlatL2(768)
-
-                # for img in images:
-                #     # print(image_path)
-                #     img = img.convert('RGB')
-                #     # clip_features = extract_features_clip(img)
-                #     # add_vector_to_index(clip_features,index_clip)
-                #     dino_features = extract_features_dino(img)
-                #     add_vector_to_index(dino_features,index_dino)
-
-                # faiss.write_index(index_dino,"dino.index")
-
-
-                # image = source_img
-
-                # device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
-
-                # processor_dino = AutoImageProcessor.from_pretrained('facebook/dinov2-base')
-                # model_dino = AutoModel.from_pretrained('facebook/dinov2-base').to('cuda')
-
-                # with torch.no_grad():
-                # # print(processor_dino)
-                #     inputs_dino = processor_dino(images=image, return_tensors="pt").to('cuda')
-                #     outputs_dino = model_dino(**inputs_dino)
-                #     image_features_dino = outputs_dino.last_hidden_state
-
-                #     image_features_dino = image_features_dino.mean(dim=1)
-
-                # image_features_dino = normalizeL2(image_features_dino)
-                # # image_features_clip = normalizeL2(image_features_clip)
-
-                # #Search the top 5 images
-                # # index_clip = faiss.read_index("clip.index")
-                # index_dino = faiss.read_index("dino.index")
-
-                # #Get distance and indexes of images associated
-                # d_dino,i_dino = index_dino.search(image_features_dino,3)
-
-                # print(i_dino, d_dino)
-
-                # import pdb; pdb.set_trace()
-
-                # seq="hand2"
-
-                # IoU_with_prev_for_mask1 = obatin_iou(first_mask, get_nth_mask(seq, frame_idx))
-                # IoU_with_prev_for_mask2 = obatin_iou(second_mask, get_nth_mask(seq, frame_idx))
-                # IoU_with_prev_for_mask3 = obatin_iou(third_mask, get_nth_mask(seq, frame_idx))
-
-                # if IoU_with_prev_for_mask1 > IoU_with_prev_for_mask2 and IoU_with_prev_for_mask1 > IoU_with_prev_for_mask3:
-                #     print(0)
-                # elif IoU_with_prev_for_mask2 > IoU_with_prev_for_mask1 and IoU_with_prev_for_mask2 > IoU_with_prev_for_mask3:
-                #     print(1)
-                # else:
-                #     print(2)
-
-                # print(IoU_with_prev_for_mask1, IoU_with_prev_for_mask2, IoU_with_prev_for_mask3, frame_idx+1)
-
-                best_iou_inds = index_maxx #i_dino[0][index_maxx]
-
-
-
-
-                # IoU_with_prev_for_mask1 = obatin_iou(first_mask, prev_mask)
-                # IoU_with_prev_for_mask2 = obatin_iou(second_mask, prev_mask)
-                # IoU_with_prev_for_mask3 = obatin_iou(third_mask, prev_mask)
-
-
-
-                # cog1 = self.compute_center_of_gravity(prev_mask)
-                # cog2 = self.compute_center_of_gravity(first_mask)
-
-                # # Align mask2 to mask1
-                # translation = cog2 - cog1
-                # aligned_mask2 = self.translate_mask(prev_mask, translation)
-
-                # IoU_with_prev_for_mask1 = obatin_iou(aligned_mask2, first_mask)
-
-                # cog1 = self.compute_center_of_gravity(prev_mask)
-                # cog2 = self.compute_center_of_gravity(second_mask)
-
-                # # Align mask2 to mask1
-                # translation = cog2 - cog1
-                # aligned_mask2 = self.translate_mask(prev_mask, translation)
-
-                # IoU_with_prev_for_mask2 = obatin_iou(aligned_mask2, second_mask)
-
-                # cog1 = self.compute_center_of_gravity(prev_mask)
-                # cog2 = self.compute_center_of_gravity(third_mask)
-
-                # # Align mask2 to mask1
-                # translation = cog2 - cog1
-                # aligned_mask2 = self.translate_mask(prev_mask, translation)
-
-                # IoU_with_prev_for_mask3 = obatin_iou(aligned_mask2, third_mask)
-
-
-
-                # print(IoU_with_prev_for_mask1, IoU_with_prev_for_mask2, IoU_with_prev_for_mask3)
-                # print(ious)
-                # print(obatin_iou(first_mask, prev_mask), obatin_iou(second_mask, prev_mask), obatin_iou(third_mask, prev_mask))
-
-
-
-                # best_idx_sam2 = torch.argmax(ious, dim=-1)
-
-                # if best_idx_sam2 == 0:
-                #     best_sam2_mask = IoU_with_prev_for_mask1
-                # elif best_idx_sam2 == 1:
-                #     best_sam2_mask = IoU_with_prev_for_mask2
-                # else:
-                #     best_sam2_mask = IoU_with_prev_for_mask3
-
-                # #print(obatin_iou(first_mask, prev_mask), obatin_iou(second_mask, prev_mask), obatin_iou(third_mask, prev_mask))
-
-                # # if best_sam2_mask > 0.5:
-                # #     best_iou_inds= best_iou_inds
-                # # else:
-                # if IoU_with_prev_for_mask1 > IoU_with_prev_for_mask2+0.05 and IoU_with_prev_for_mask1 > IoU_with_prev_for_mask3+0.05 and obatin_iou(first_mask, prev_mask) > 0.02 and ious[0][0] > 0.1:
-                #     best_iou_inds = 0
-                # elif IoU_with_prev_for_mask2 > IoU_with_prev_for_mask1+0.05 and IoU_with_prev_for_mask2 > IoU_with_prev_for_mask3+0.05 and obatin_iou(second_mask, prev_mask) > 0.02 and ious[0][1] > 0.1:
-                #     best_iou_inds = 1
-                # elif IoU_with_prev_for_mask3 > IoU_with_prev_for_mask1+0.05 and IoU_with_prev_for_mask3 > IoU_with_prev_for_mask2+0.05 and obatin_iou(third_mask, prev_mask) > 0.02 and ious[0][2] > 0.1:
-                #     best_iou_inds = 2
-
-                # print("picked ", best_iou_inds)
-
-
-                # import pdb; pdb.set_trace()
-
-                # best_idx_sam2 = torch.argmax(ious, dim=-1)
-
-                # if best_idx_sam2 == 0:
-                #     best_sam2_mask = IoU_with_prev_for_mask1
-                # elif best_idx_sam2 == 1:
-                #     best_sam2_mask = IoU_with_prev_for_mask2
-                # else:
-                #     best_sam2_mask = IoU_with_prev_for_mask3
-
-                # if best_sam2_mask > 0.1:
-                #     best_iou_inds = best_idx_sam2
-                # elif IoU_with_prev_for_mask1> 0.1:
-                #     best_iou_inds = 0
-                # elif IoU_with_prev_for_mask2 > 0.1:
-                #     best_iou_inds = 1
-                # elif IoU_with_prev_for_mask3 > 0.1: 
-                #     best_iou_inds = 2
-                # else:
-                #     best_iou_inds = best_idx_sam2
             else:
                 best_iou_inds = torch.argmax(ious, dim=-1) 
 
@@ -1566,3 +1227,343 @@ class SAM2Base(torch.nn.Module):
         # don't overlap (here sigmoid(-10.0)=4.5398e-05)
         pred_masks = torch.where(keep, pred_masks, torch.clamp(pred_masks, max=-10.0))
         return pred_masks
+
+
+
+
+
+# IoU_with_prev_for_mask1 = obatin_iou(first_mask, prev_mask)
+# IoU_with_prev_for_mask2 = obatin_iou(second_mask, prev_mask)
+# IoU_with_prev_for_mask3 = obatin_iou(third_mask, prev_mask)
+
+
+
+# cog1 = self.compute_center_of_gravity(prev_mask)
+# cog2 = self.compute_center_of_gravity(first_mask)
+
+# # Align mask2 to mask1
+# translation = cog2 - cog1
+# aligned_mask2 = self.translate_mask(prev_mask, translation)
+
+# IoU_with_prev_for_mask1 = obatin_iou(aligned_mask2, first_mask)
+
+# cog1 = self.compute_center_of_gravity(prev_mask)
+# cog2 = self.compute_center_of_gravity(second_mask)
+
+# # Align mask2 to mask1
+# translation = cog2 - cog1
+# aligned_mask2 = self.translate_mask(prev_mask, translation)
+
+# IoU_with_prev_for_mask2 = obatin_iou(aligned_mask2, second_mask)
+
+# cog1 = self.compute_center_of_gravity(prev_mask)
+# cog2 = self.compute_center_of_gravity(third_mask)
+
+# # Align mask2 to mask1
+# translation = cog2 - cog1
+# aligned_mask2 = self.translate_mask(prev_mask, translation)
+
+# IoU_with_prev_for_mask3 = obatin_iou(aligned_mask2, third_mask)
+
+
+
+# print(IoU_with_prev_for_mask1, IoU_with_prev_for_mask2, IoU_with_prev_for_mask3)
+# print(ious)
+# print(obatin_iou(first_mask, prev_mask), obatin_iou(second_mask, prev_mask), obatin_iou(third_mask, prev_mask))
+
+
+
+# best_idx_sam2 = torch.argmax(ious, dim=-1)
+
+# if best_idx_sam2 == 0:
+#     best_sam2_mask = IoU_with_prev_for_mask1
+# elif best_idx_sam2 == 1:
+#     best_sam2_mask = IoU_with_prev_for_mask2
+# else:
+#     best_sam2_mask = IoU_with_prev_for_mask3
+
+# #print(obatin_iou(first_mask, prev_mask), obatin_iou(second_mask, prev_mask), obatin_iou(third_mask, prev_mask))
+
+# # if best_sam2_mask > 0.5:
+# #     best_iou_inds= best_iou_inds
+# # else:
+# if IoU_with_prev_for_mask1 > IoU_with_prev_for_mask2+0.05 and IoU_with_prev_for_mask1 > IoU_with_prev_for_mask3+0.05 and obatin_iou(first_mask, prev_mask) > 0.02 and ious[0][0] > 0.1:
+#     best_iou_inds = 0
+# elif IoU_with_prev_for_mask2 > IoU_with_prev_for_mask1+0.05 and IoU_with_prev_for_mask2 > IoU_with_prev_for_mask3+0.05 and obatin_iou(second_mask, prev_mask) > 0.02 and ious[0][1] > 0.1:
+#     best_iou_inds = 1
+# elif IoU_with_prev_for_mask3 > IoU_with_prev_for_mask1+0.05 and IoU_with_prev_for_mask3 > IoU_with_prev_for_mask2+0.05 and obatin_iou(third_mask, prev_mask) > 0.02 and ious[0][2] > 0.1:
+#     best_iou_inds = 2
+
+# print("picked ", best_iou_inds)
+
+
+# import pdb; pdb.set_trace()
+
+# best_idx_sam2 = torch.argmax(ious, dim=-1)
+
+# if best_idx_sam2 == 0:
+#     best_sam2_mask = IoU_with_prev_for_mask1
+# elif best_idx_sam2 == 1:
+#     best_sam2_mask = IoU_with_prev_for_mask2
+# else:
+#     best_sam2_mask = IoU_with_prev_for_mask3
+
+# if best_sam2_mask > 0.1:
+#     best_iou_inds = best_idx_sam2
+# elif IoU_with_prev_for_mask1> 0.1:
+#     best_iou_inds = 0
+# elif IoU_with_prev_for_mask2 > 0.1:
+#     best_iou_inds = 1
+# elif IoU_with_prev_for_mask3 > 0.1: 
+#     best_iou_inds = 2
+# else:
+#     best_iou_inds = best_idx_sam2
+
+
+
+
+
+# seq="drone1"
+# of_mask1 = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", first_mask, frame_idx+1)
+# of_mask2 = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", second_mask, frame_idx+1)
+# of_mask3 = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", third_mask, frame_idx+1)
+
+
+# # print(of_mask.shape, first_mask.shape)
+# iou1 = obatin_iou(prev_mask[0], of_mask1)
+# iou2 =obatin_iou(prev_mask[0], of_mask2)
+# iou3 = obatin_iou(prev_mask[0], of_mask3)
+
+# if iou1 > iou2 and iou1 > iou3:
+#     index_maxx = 0
+# elif iou2 > iou1 and iou2 > iou3:
+#     index_maxx = 1
+# elif iou3 > iou1 and iou3 > iou2:
+#     index_maxx = 2
+
+
+
+
+# min_row, min_col, max_row, max_col = get_bounding_box(first_mask)
+
+# img_pil = Image.open(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg")
+
+# first_mask = np.repeat(first_mask[:, :, np.newaxis], 3, axis=2)
+
+# image_array = np.array(img_pil)
+# masked_image_array = image_array * first_mask
+
+# # Convert back to a PIL image
+# masked_image = Image.fromarray(masked_image_array)
+
+# first_img = masked_image.crop((min_row, min_col, max_row, max_col))
+
+ 
+# min_row, min_col, max_row, max_col = get_bounding_box(second_mask)
+
+# img_pil = Image.open(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg")
+
+# second_mask = np.repeat(second_mask[:, :, np.newaxis], 3, axis=2)
+
+# image_array = np.array(img_pil)
+# masked_image_array = image_array * second_mask
+
+# # Convert back to a PIL image
+# masked_image = Image.fromarray(masked_image_array)
+
+# second_img = masked_image.crop((min_row, min_col, max_row, max_col))
+
+
+
+# min_row, min_col, max_row, max_col = get_bounding_box(third_mask)
+
+# img_pil = Image.open(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg")
+
+# third_mask = np.repeat(third_mask[:, :, np.newaxis], 3, axis=2)
+
+# image_array = np.array(img_pil)
+# masked_image_array = image_array * third_mask
+
+# # Convert back to a PIL image
+# masked_image = Image.fromarray(masked_image_array)
+
+# third_img = masked_image.crop((min_row, min_col, max_row, max_col))
+
+
+# prev_imgs = []
+# cnt=0
+
+# for mask_i in prev_mask:
+#     # print(cnt, len(prev_mask), mask_i.shape)
+#     min_row, min_col, max_row, max_col = get_bounding_box(mask_i)
+
+#     img_pil = Image.open(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx-cnt:0{8}d}.jpg")
+
+#     image_array = np.array(img_pil)
+
+#     mask_i = np.repeat(mask_i[:, :, np.newaxis], 3, axis=2)
+
+#     masked_image_array = image_array * mask_i
+
+#     # print("masked image array: ", masked_image_array.shape)
+
+#     # Convert back to a PIL image
+#     masked_image = Image.fromarray(masked_image_array.astype(np.uint8))
+
+#     source_img = masked_image.crop((min_row, min_col, max_row, max_col))
+
+#     prev_imgs.append(source_img)
+
+#     cnt+=1
+
+
+# first_img.save(f"saved_dino/{frame_idx+1:0{8}d}_first.jpg")
+# second_img.save(f"saved_dino/{frame_idx+1:0{8}d}_second.jpg")
+# third_img.save(f"saved_dino/{frame_idx+1:0{8}d}_third.jpg")
+
+
+
+# if frame_idx+1 == 32:
+#     first_img.save('32_first_img.png')
+#     second_img.save('32_second_img.png')
+#     third_img.save('32_third_img.png')
+
+# if frame_idx+1 == 33:
+#     first_img.save('33_first_img.png')
+#     second_img.save('33_second_img.png')
+#     third_img.save('33_third_img.png')
+
+# if frame_idx+1 == 34:
+#     first_img.save('34_first_img.png')
+#     second_img.save('34_second_img.png')
+#     third_img.save('34_third_img.png')
+
+
+
+# first_img = (first_mask * 255).astype(np.uint8)
+# first_img = Image.fromarray(first_img)
+
+# second_img = (second_mask * 255).astype(np.uint8)
+# second_img = Image.fromarray(second_img)
+
+# third_img = (third_mask * 255).astype(np.uint8)
+# third_img = Image.fromarray(third_img)
+
+# source_img = (prev_mask * 255).astype(np.uint8)
+# source_img = Image.fromarray(source_img)
+
+
+# images = [first_img, second_img, third_img]
+
+
+# maxx, cnt, index_maxx = -1, 0, -1
+
+# for img in images:
+
+#     summ = 0
+#     cnt_inner = 0
+#     for source_img in prev_imgs:  
+#         with torch.no_grad():
+#             inputs1 = processor_dino(images=img, return_tensors="pt").to(device)
+#             outputs1 = model_dino(**inputs1)
+#             image_features1 = outputs1.last_hidden_state
+#             image_features1 = image_features1.mean(dim=1)
+
+#         # import pdb; pdb.set_trace()
+
+
+#         with torch.no_grad():
+#             inputs2 = processor_dino(images=source_img, return_tensors="pt").to(device)
+#             outputs2 = model_dino(**inputs2)
+#             image_features2 = outputs2.last_hidden_state
+#             image_features2 = image_features2.mean(dim=1)
+
+#         cos = nn.CosineSimilarity(dim=0)
+#         sim = cos(image_features1[0],image_features2[0]).item()
+#         sim = (sim+1)/2
+
+#         if cnt_inner == 0 or cnt_inner == len(prev_imgs)-1:
+#             sim *= 2 
+
+#         summ += sim
+#         cnt_inner += 1
+
+#     summ /= len(prev_imgs)
+
+#     if summ > maxx:
+#         maxx = summ
+#         index_maxx = cnt 
+
+#     print('Similarity:', summ)
+
+
+#     cnt+=1
+
+# print(f"chosen for {frame_idx+1} is {index_maxx}")
+
+
+
+
+# import pdb; pdb.set_trace()
+
+# import pdb; pdb.
+# device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
+# processor_dino = AutoImageProcessor.from_pretrained('facebook/dinov2-base')
+# model_dino = AutoModel.from_pretrained('facebook/dinov2-base').to(device)
+
+# index_dino = faiss.IndexFlatL2(768)
+
+# for img in images:
+#     # print(image_path)
+#     img = img.convert('RGB')
+#     # clip_features = extract_features_clip(img)
+#     # add_vector_to_index(clip_features,index_clip)
+#     dino_features = extract_features_dino(img)
+#     add_vector_to_index(dino_features,index_dino)
+
+# faiss.write_index(index_dino,"dino.index")
+
+
+# image = source_img
+
+# device = torch.device('cuda' if torch.cuda.is_available() else "cpu")
+
+# processor_dino = AutoImageProcessor.from_pretrained('facebook/dinov2-base')
+# model_dino = AutoModel.from_pretrained('facebook/dinov2-base').to('cuda')
+
+# with torch.no_grad():
+# # print(processor_dino)
+#     inputs_dino = processor_dino(images=image, return_tensors="pt").to('cuda')
+#     outputs_dino = model_dino(**inputs_dino)
+#     image_features_dino = outputs_dino.last_hidden_state
+
+#     image_features_dino = image_features_dino.mean(dim=1)
+
+# image_features_dino = normalizeL2(image_features_dino)
+# # image_features_clip = normalizeL2(image_features_clip)
+
+# #Search the top 5 images
+# # index_clip = faiss.read_index("clip.index")
+# index_dino = faiss.read_index("dino.index")
+
+# #Get distance and indexes of images associated
+# d_dino,i_dino = index_dino.search(image_features_dino,3)
+
+# print(i_dino, d_dino)
+
+# import pdb; pdb.set_trace()
+
+# seq="hand2"
+
+# IoU_with_prev_for_mask1 = obatin_iou(first_mask, get_nth_mask(seq, frame_idx))
+# IoU_with_prev_for_mask2 = obatin_iou(second_mask, get_nth_mask(seq, frame_idx))
+# IoU_with_prev_for_mask3 = obatin_iou(third_mask, get_nth_mask(seq, frame_idx))
+
+# if IoU_with_prev_for_mask1 > IoU_with_prev_for_mask2 and IoU_with_prev_for_mask1 > IoU_with_prev_for_mask3:
+#     print(0)
+# elif IoU_with_prev_for_mask2 > IoU_with_prev_for_mask1 and IoU_with_prev_for_mask2 > IoU_with_prev_for_mask3:
+#     print(1)
+# else:
+#     print(2)
+
+# print(IoU_with_prev_for_mask1, IoU_with_prev_for_mask2, IoU_with_prev_for_mask3, frame_idx+1)
