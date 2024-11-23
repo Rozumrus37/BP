@@ -24,7 +24,7 @@ if torch.cuda.get_device_properties(0).major >= 8:
     torch.backends.cuda.matmul.allow_tf32 = True 
     torch.backends.cudnn.allow_tf32 = True
 
-SEQ = ['agility', 'animal', 'ants1', 'bag', 'ball2', 'ball3', 'basketball', 'birds1', 'birds2', 'bolt1', 'book', 'bubble', 'butterfly', 'car1', 'conduction1', 'crabs1', 'dinosaur', 'diver', 'drone1', 'drone_across', 'fernando', 'fish1', 'fish2', 'flamingo1', 'frisbee', 'girl', 'graduate', 'gymnastics1', 'gymnastics2', 'gymnastics3', 'hand', 'hand2', 'handball1', 'handball2', 'helicopter', 'iceskater1', 'iceskater2', 'kangaroo', 'lamb', 'leaves', 'marathon', 'matrix', 'monkey', 'motocross1', 'nature', 'polo', 'rabbit', 'rabbit2', 'rowing', 'shaking', 'singer2', 'singer3', 'snake', 'soccer1', 'soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper', 'zebrafish1']
+SEQ = ['agility', 'animal', 'ants1', 'bag', 'ball2', 'ball3', 'basketball', 'birds1', 'birds2', 'bolt1', 'book', 'bubble', 'butterfly', 'car1', 'conduction1', 'crabs1', 'dinosaur', 'diver', 'drone1', 'drone_across', 'fernando', 'fish1', 'fish2', 'flamingo1', 'frisbee', 'girl', 'graduate', 'gymnastics1', 'gymnastics2', 'gymnastics3', 'hand', 'hand2', 'handball1', 'handball2', 'helicopter', 'iceskater1', 'iceskater2', 'kangaroo', 'lamb', 'leaves', 'marathon', 'matrix', 'monkey', 'motocross1', 'nature', 'polo', 'rabbit', 'rabbit2', 'rowing', 'shaking', 'singer2', 'singer3', 'snake', 'soccer1', 'soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper']#, 'zebrafish1']
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -43,6 +43,7 @@ def parse_args():
     parser.add_argument('--uncroped_mask_for_double_MB', action="store_true")
     parser.add_argument('--use_prev_mask', action="store_true")
     parser.add_argument('--oracle', action="store_true")
+    parser.add_argument('--alfa_flow', default=None)
 
     args = parser.parse_args()
 
@@ -52,12 +53,12 @@ def parse_args():
     return (args.exclude_empty_masks, args.vis_out, args.memory_stride, 
     args.crop_gt, args.factor, args.use_prev_box, args.use_square_box, 
     args.no_mask_set_larger_prev_bbox, args.no_mask_set_whole_image, 
-    args.double_memory_bank, args.uncroped_mask_for_double_MB, args.oracle, args.oracle_threshold, args.use_prev_mask, args.sequences)
+    args.double_memory_bank, args.uncroped_mask_for_double_MB, args.oracle, args.oracle_threshold, args.use_prev_mask, args.alfa_flow, args.sequences)
 
 (exclude_empty_masks, vis_out, memory_stride, 
 crop_gt, factor, use_prev_box, use_square_box, 
 no_mask_set_larger_prev_bbox, no_mask_set_whole_image, 
-double_memory_bank, uncroped_mask_for_double_MB, oracle, oracle_threshold, use_prev_mask, sequences) = parse_args()
+double_memory_bank, uncroped_mask_for_double_MB, oracle, oracle_threshold, use_prev_mask, alfa_flow, sequences) = parse_args()
 
 if sequences != None:
     SEQ = sequences
@@ -211,7 +212,8 @@ def run_eval(seq):
             oracle_threshold=oracle_threshold,
             prev_mask=prev_mask, #previous_masks,#prev_mask, , #
             processor_dino=processor_dino,
-            model_dino=model_dino)
+            model_dino=model_dino,
+            alfa_flow=alfa_flow)
 
         missed_best_mask += miss
 

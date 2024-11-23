@@ -308,6 +308,7 @@ class SAM2Base(torch.nn.Module):
         W_original=None,
         processor_dino=None,
         model_dino=None,
+        alfa_flow=None,
     ):
         """
         Forward SAM prompt encoders and mask heads.
@@ -520,24 +521,18 @@ class SAM2Base(torch.nn.Module):
 
 
                 if np.any(prev_mask[0] > 0) and np.any(first_mask > 0) and np.any(second_mask > 0) and np.any(third_mask > 0):
-                    index_maxx = best_iou_inds
-                    
-                    # if not (get_bounding_box(first_mask) is None):# and not (get_bounding_box(prev_mask) is None):
                     of_mask = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", prev_mask[0], frame_idx+1, seq=seq)
-
-                    # print(of_mask.shape, first_mask.shape)
-                    iou1 = obatin_iou(first_mask, of_mask)
-                    iou2 = obatin_iou(second_mask, of_mask)
-                    iou3 = obatin_iou(third_mask, of_mask)
+                
+                    iou1 = alfa_flow * obatin_iou(first_mask, of_mask) + (1 - alfa_flow) * ious[0][0].item()
+                    iou2 = alfa_flow * obatin_iou(second_mask, of_mask) + (1 - alfa_flow) * ious[0][1].item()
+                    iou3 = alfa_flow * obatin_iou(third_mask, of_mask) + (1 - alfa_flow) * ious[0][2].item()
 
                     if iou1 > iou2 and iou1 > iou3:
-                        index_maxx = 0
+                        best_iou_inds = 0
                     elif iou2 > iou1 and iou2 > iou3:
-                        index_maxx = 1
+                        best_iou_inds = 1
                     elif iou3 > iou1 and iou3 > iou2:
-                        index_maxx = 2
-           
-                    best_iou_inds = index_maxx #i_dino[0][index_maxx]
+                        best_iou_inds = 2
 
             else:
                 best_iou_inds = torch.argmax(ious, dim=-1) 
@@ -1016,6 +1011,7 @@ class SAM2Base(torch.nn.Module):
         W_original=None,
         processor_dino=None,
         model_dino=None,
+        alfa_flow=None,
     ):
         current_out = {"point_inputs": point_inputs, "mask_inputs": mask_inputs}
         # High-resolution feature maps for the SAM head, reshape (HW)BC => BCHW
@@ -1072,6 +1068,7 @@ class SAM2Base(torch.nn.Module):
                 W_original=W_original,
                 processor_dino=processor_dino,
                 model_dino=model_dino,
+                alfa_flow=alfa_flow,
             )
 
         return current_out, sam_outputs, high_res_features, pix_feat
@@ -1133,6 +1130,7 @@ class SAM2Base(torch.nn.Module):
         original_W=None,
         processor_dino=None,
         model_dino=None,
+        alfa_flow=None,
     ):  
         self.memory_temporal_stride_for_eval = memory_stride
 
@@ -1159,6 +1157,7 @@ class SAM2Base(torch.nn.Module):
             original_W,
             processor_dino,
             model_dino,
+            alfa_flow,
         )
 
 

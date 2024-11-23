@@ -791,6 +791,7 @@ class SAM2VideoPredictor(SAM2Base):
         prev_mask=None,
         processor_dino=None,
         model_dino=None,
+        alfa_flow=None,
     ):  
 
         # out_frame_idx = frame_idx
@@ -860,6 +861,7 @@ class SAM2VideoPredictor(SAM2Base):
                 original_W=self.image_width_fr,
                 processor_dino=processor_dino,
                 model_dino=model_dino,
+                alfa_flow=alfa_flow,
             )
 
             _, video_res_masks = self._get_orig_video_res_output(
@@ -1203,6 +1205,7 @@ class SAM2VideoPredictor(SAM2Base):
         original_W=None,
         processor_dino=None,
         model_dino=None,
+        alfa_flow=None,
     ):
         """Run tracking on a single frame based on current inputs and previous memory."""
         # Retrieve correct image features
@@ -1242,6 +1245,7 @@ class SAM2VideoPredictor(SAM2Base):
             original_W=original_W,
             processor_dino=processor_dino,
             model_dino=model_dino,
+            alfa_flow=alfa_flow,
         )
 
         # optionally offload the output to CPU memory to save GPU space
