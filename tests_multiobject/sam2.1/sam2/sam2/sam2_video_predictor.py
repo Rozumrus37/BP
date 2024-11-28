@@ -792,6 +792,12 @@ class SAM2VideoPredictor(SAM2Base):
         processor_dino=None,
         model_dino=None,
         alfa_flow=None,
+        direct_comp_to_prev_pred=False,
+        backward_of=False,
+        interpolation='bilinear', 
+        kernel_size=3, 
+        close_trans=False, 
+        open_trans=False,
     ):  
 
         # out_frame_idx = frame_idx
@@ -862,6 +868,12 @@ class SAM2VideoPredictor(SAM2Base):
                 processor_dino=processor_dino,
                 model_dino=model_dino,
                 alfa_flow=alfa_flow,
+                direct_comp_to_prev_pred=direct_comp_to_prev_pred,
+                backward_of=backward_of,
+                interpolation=interpolation, 
+                kernel_size=kernel_size, 
+                close_trans=close_trans, 
+                open_trans=open_trans,
             )
 
             _, video_res_masks = self._get_orig_video_res_output(
@@ -1206,6 +1218,12 @@ class SAM2VideoPredictor(SAM2Base):
         processor_dino=None,
         model_dino=None,
         alfa_flow=None,
+        direct_comp_to_prev_pred=False,
+        backward_of=False,
+        interpolation='bilinear', 
+        kernel_size=3, 
+        close_trans=False, 
+        open_trans=False,
     ):
         """Run tracking on a single frame based on current inputs and previous memory."""
         # Retrieve correct image features
@@ -1246,6 +1264,12 @@ class SAM2VideoPredictor(SAM2Base):
             processor_dino=processor_dino,
             model_dino=model_dino,
             alfa_flow=alfa_flow,
+            direct_comp_to_prev_pred=direct_comp_to_prev_pred,
+            backward_of=backward_of,
+            interpolation=interpolation, 
+            kernel_size=kernel_size, 
+            close_trans=close_trans, 
+            open_trans=open_trans,
         )
 
         # optionally offload the output to CPU memory to save GPU space

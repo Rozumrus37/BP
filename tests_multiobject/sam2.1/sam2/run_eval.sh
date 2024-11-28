@@ -9,14 +9,71 @@ commands=(
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 80"
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 81"
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 82"
-    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 99"
-    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 100"
-    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 101"
-    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 120"
-    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 122"
-    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --exclude_empty_masks"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 99"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 100"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 101"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 120"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 122"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --exclude_empty_masks"
+
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.25 --backward_of --save_res_path BOF_025.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.1 --interpolation replicate --save_res_path of_repl_af_0.1.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.1 --interpolation bilinear --save_res_path of_bilinear_af_0.1.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.1 --backward_of --interpolation replicate --save_res_path bof_repl_af_0.1.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.1 --backward_of --interpolation bilinear --save_res_path bof_bilinear_af_0.1.csv"
 
 
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.15 --interpolation replicate --save_res_path of_repl_af_0.15.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.15 --interpolation bilinear --save_res_path of_bilinear_af_0.15.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.15 --backward_of --interpolation replicate --save_res_path bof_repl_af_0.15.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.15 --backward_of --interpolation bilinear --save_res_path bof_bilinear_af_0.15.csv"
+
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.25 --interpolation replicate --save_res_path of_repl_af_0.25.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.25 --interpolation bilinear --save_res_path of_bilinear_af_0.25.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.25 --backward_of --interpolation replicate --save_res_path bof_repl_af_0.25.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.25 --backward_of --interpolation bilinear --save_res_path bof_bilinear_af_0.25.csv"
+
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.35 --interpolation replicate --save_res_path of_repl_af_0.35.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.35 --interpolation bilinear --save_res_path of_bilinear_af_0.35.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.35 --backward_of --interpolation replicate --save_res_path bof_repl_af_0.35.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.35 --backward_of --interpolation bilinear --save_res_path bof_bilinear_af_0.35.csv"
+
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.5 --interpolation replicate --save_res_path of_repl_af_0.5.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.5 --interpolation bilinear --save_res_path of_bilinear_af_0.5.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.5 --backward_of --interpolation replicate --save_res_path bof_repl_af_0.5.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.5 --backward_of --interpolation bilinear --save_res_path bof_bilinear_af_0.5.csv"
+
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.6 --interpolation replicate --save_res_path of_repl_af_0.6.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.6 --interpolation bilinear --save_res_path of_bilinear_af_0.6.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.6 --backward_of --interpolation replicate --save_res_path bof_repl_af_0.6.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.6 --backward_of --interpolation bilinear --save_res_path bof_bilinear_af_0.6.csv"
+
+
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 1 --interpolation replicate --save_res_path of_repl_af_1.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 1 --interpolation bilinear --save_res_path of_bilinear_af_1.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 1 --backward_of --interpolation replicate --save_res_path bof_repl_af_1.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 1 --backward_of --interpolation bilinear --save_res_path bof_bilinear_af_1.csv"
+
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 1 --interpolation replicate --close_trans --open_trans --save_res_path of_repl_af_1_co_trans.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 1 --interpolation bilinear --close_trans --open_trans --save_res_path of_bilinear_af_1_co_trans.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 1 --backward_of --interpolation replicate --close_trans --open_trans  --save_res_path bof_repl_af_1_co_trans.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 1 --backward_of --interpolation bilinear --close_trans --open_trans  --save_res_path bof_bilinear_af_1_co_trans.csv"
+
+
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.1 --backward_of --save_res_path BOF_05.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.1 --backward_of --save_res_path BOF_01.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.15 --backward_of --save_res_path BOF_015.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.6 --backward_of --save_res_path BOF_06.csv"
+
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.6 --save_res_path OF_06.csv"
+
+
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.1"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.15"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.25"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.35"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.5"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.6"
 
     # "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --oracle"
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --oracle --oracle_threshold 5"

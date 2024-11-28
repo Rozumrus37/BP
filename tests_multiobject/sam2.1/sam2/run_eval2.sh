@@ -2,13 +2,47 @@
 
 # Define an array of commands
 commands=(
+    "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.25 --backward_of --sequences zebrafish1"
+    "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.5 --backward_of --sequences zebrafish1"
+    "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.1 --backward_of --sequences zebrafish1"
+    "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.15 --backward_of --sequences zebrafish1"
+    "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.6 --backward_of --sequences zebrafish1"
+
+    "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.6 --sequences zebrafish1"
+
+
+
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.1 --save_res_path OF0.1.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.15 --save_res_path OF0.15.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.25 --save_res_path OF0.25.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.35 --save_res_path OF0.35.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.5 --save_res_path OF0.5.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.6 --save_res_path OF0.6.csv"
+
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.2 -save_res_path OF0.2.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.3 -save_res_path OF0.3.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.4 -save_res_path OF0.4.csv"
+
+
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.1 --direct_comp_to_prev_pred --save_res_path PM0.1.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.15 --direct_comp_to_prev_pred --save_res_path PM0.15.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.25 --direct_comp_to_prev_pred --save_res_path PM0.25.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.35 --direct_comp_to_prev_pred --save_res_path PM0.35.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.5 --direct_comp_to_prev_pred --save_res_path PM0.5.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.6 --direct_comp_to_prev_pred --save_res_path PM0.6.csv"
+
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.2 --direct_comp_to_prev_pred -save_res_path PM0.2.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.3 --direct_comp_to_prev_pred  -save_res_path PM0.3.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.4 --direct_comp_to_prev_pred -save_res_path PM0.4.csv"
+
+
     # "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --oracle"
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --oracle --oracle_threshold 5"
-    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --oracle --oracle_threshold 10 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks --no_mask_set_larger_prev_bbox "
-    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --oracle --oracle_threshold 20 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks --no_mask_set_larger_prev_bbox "
-    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --oracle --oracle_threshold 30 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks --no_mask_set_larger_prev_bbox "
-    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --oracle --oracle_threshold 40 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks --no_mask_set_larger_prev_bbox "
-    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --oracle --oracle_threshold 50 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks --no_mask_set_larger_prev_bbox "
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --oracle --oracle_threshold 10 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks --no_mask_set_larger_prev_bbox "
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --oracle --oracle_threshold 20 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks --no_mask_set_larger_prev_bbox "
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --oracle --oracle_threshold 30 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks --no_mask_set_larger_prev_bbox "
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --oracle --oracle_threshold 40 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks --no_mask_set_larger_prev_bbox "
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --oracle --oracle_threshold 50 --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks --no_mask_set_larger_prev_bbox "
 
 
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py  --use_prev_box --factor 144 --memory_stride 7 --exclude_empty_masks --no_mask_set_larger_prev_bbox --double_memory_bank --uncroped_mask_for_double_MB"

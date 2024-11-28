@@ -9,11 +9,12 @@ from compute_iou import *
 from utilities_eval import *
 import argparse
 from tqdm import tqdm
+import gc 
 
 from transformers import AutoProcessor, CLIPModel, AutoImageProcessor, AutoModel
 import faiss
 import torch.nn as nn
-
+import csv
 torch.autocast(device_type="cuda", dtype=torch.bfloat16).__enter__()
 
 processor_dino = AutoImageProcessor.from_pretrained('facebook/dinov2-giant')
@@ -24,7 +25,10 @@ if torch.cuda.get_device_properties(0).major >= 8:
     torch.backends.cuda.matmul.allow_tf32 = True 
     torch.backends.cudnn.allow_tf32 = True
 
-SEQ = ['agility', 'animal', 'ants1', 'bag', 'ball2', 'ball3', 'basketball', 'birds1', 'birds2', 'bolt1', 'book', 'bubble', 'butterfly', 'car1', 'conduction1', 'crabs1', 'dinosaur', 'diver', 'drone1', 'drone_across', 'fernando', 'fish1', 'fish2', 'flamingo1', 'frisbee', 'girl', 'graduate', 'gymnastics1', 'gymnastics2', 'gymnastics3', 'hand', 'hand2', 'handball1', 'handball2', 'helicopter', 'iceskater1', 'iceskater2', 'kangaroo', 'lamb', 'leaves', 'marathon', 'matrix', 'monkey', 'motocross1', 'nature', 'polo', 'rabbit', 'rabbit2', 'rowing', 'shaking', 'singer2', 'singer3', 'snake', 'soccer1', 'soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper']#, 'zebrafish1']
+SEQ = ['agility', 'animal', 'ants1', 'bag', 'ball2', 'ball3', 'basketball', 'birds1', 'birds2', 'bolt1', 'book', 'bubble', 'butterfly', 'car1', 'conduction1', 'crabs1', 'dinosaur', 'diver', 'drone1', 'drone_across', 'fernando', 'fish1', 'fish2', 'flamingo1', 'frisbee', 'girl', 'graduate', 'gymnastics1', 'gymnastics2', 'gymnastics3', 'hand', 'hand2', 'handball1', 'handball2', 'helicopter', 'iceskater1', 'iceskater2', 'kangaroo', 'lamb', 'leaves', 'marathon', 'matrix', 'monkey', 'motocross1', 'nature', 'polo', 'rabbit', 'rabbit2', 'rowing', 'shaking', 'singer2', 'singer3', 'snake', 'soccer1', 'soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper', 'zebrafish1']
+
+
+# SEQ =['singer3', 'snake', 'soccer1', 'soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper']
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -42,8 +46,15 @@ def parse_args():
     parser.add_argument('--oracle_threshold', type=float, default=20)
     parser.add_argument('--uncroped_mask_for_double_MB', action="store_true")
     parser.add_argument('--use_prev_mask', action="store_true")
+    parser.add_argument('--direct_comp_to_prev_pred', action="store_true")
     parser.add_argument('--oracle', action="store_true")
-    parser.add_argument('--alfa_flow', default=None)
+    parser.add_argument('--alfa_flow', type=float, default=0.000001)
+    parser.add_argument('--save_res_path', default="output.csv")
+    parser.add_argument('--backward_of', action="store_true")
+    parser.add_argument('--interpolation', type=str, default="bilinear")
+    parser.add_argument('--kernel_size', type=int, default=3)
+    parser.add_argument('--close_trans', action="store_true")
+    parser.add_argument('--open_trans', action="store_true")
 
     args = parser.parse_args()
 
@@ -53,12 +64,16 @@ def parse_args():
     return (args.exclude_empty_masks, args.vis_out, args.memory_stride, 
     args.crop_gt, args.factor, args.use_prev_box, args.use_square_box, 
     args.no_mask_set_larger_prev_bbox, args.no_mask_set_whole_image, 
-    args.double_memory_bank, args.uncroped_mask_for_double_MB, args.oracle, args.oracle_threshold, args.use_prev_mask, args.alfa_flow, args.sequences)
+    args.double_memory_bank, args.uncroped_mask_for_double_MB, args.oracle, args.oracle_threshold, 
+    args.use_prev_mask, args.alfa_flow, args.save_res_path, args.backward_of, args.direct_comp_to_prev_pred, 
+    args.interpolation, args.kernel_size, args.close_trans, args.open_trans, args.sequences)
 
 (exclude_empty_masks, vis_out, memory_stride, 
 crop_gt, factor, use_prev_box, use_square_box, 
 no_mask_set_larger_prev_bbox, no_mask_set_whole_image, 
-double_memory_bank, uncroped_mask_for_double_MB, oracle, oracle_threshold, use_prev_mask, alfa_flow, sequences) = parse_args()
+double_memory_bank, uncroped_mask_for_double_MB, oracle, 
+oracle_threshold, use_prev_mask, alfa_flow, save_res_path, backward_of,
+direct_comp_to_prev_pred, interpolation, kernel_size, close_trans, open_trans, sequences) = parse_args()
 
 if sequences != None:
     SEQ = sequences
@@ -213,7 +228,13 @@ def run_eval(seq):
             prev_mask=prev_mask, #previous_masks,#prev_mask, , #
             processor_dino=processor_dino,
             model_dino=model_dino,
-            alfa_flow=alfa_flow)
+            alfa_flow=alfa_flow,
+            direct_comp_to_prev_pred=direct_comp_to_prev_pred,
+            backward_of=backward_of,
+            interpolation=interpolation, 
+            kernel_size=kernel_size, 
+            close_trans=close_trans, 
+            open_trans=open_trans)
 
         missed_best_mask += miss
 
@@ -295,7 +316,13 @@ def run_eval(seq):
                     print("Mask prediction is just a line or empty!")
             elif no_mask_set_whole_image:
                 prev_bbox = None
-    
+
+
+    del predictor, inference_state
+    gc.collect()
+    torch.clear_autocast_cache()
+    torch.cuda.empty_cache()
+
     if oracle:    
         print(f"For {seq} number of missed_best_mask is {missed_best_mask} and the percanrge is: {(missed_best_mask / len(masks_all))*100: .2f} %")
     return [mask_first_frame] + masks_all, (missed_best_mask / len(masks_all))*100
@@ -306,7 +333,6 @@ def vis(mask_full_size, out_obj_ids, ann_frame_idx, image, to_save_path):
     plt.cla()
     plt.axis('off')
     plt.imshow(image)
-
 
     show_mask(mask_full_size, plt.gca(), obj_id=out_obj_ids[0], ann_frame_idx=ann_frame_idx, to_save_path=to_save_path)
 
@@ -321,6 +347,10 @@ for seq in SEQ:
 
     total_miss += missed_masks_perc
 
+    with open(save_res_path, mode="a", newline="") as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow([seq, iou_curr])
+
     print(f"IoU for {seq} is: {iou_curr}")
 
 # if sequences == None:
@@ -328,6 +358,10 @@ for iou_i in all_ious:
     print(f"{iou_i}")
 
 print(f"The mean after processing seqs is: {np.array(all_ious).mean()}")
+
+with open(save_res_path, mode="a", newline="") as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(["mean", np.array(all_ious).mean()])
 
 if oracle:
     print("Mean miss: ", total_miss / len(SEQ))

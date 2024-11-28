@@ -25,7 +25,7 @@ import faiss
 import os
 import torch.nn as nn
 from optical_flow import get_mask
-
+import random
 
 # a large negative value as a placeholder score for missing objects
 NO_OBJ_SCORE = -1024.0
@@ -178,6 +178,8 @@ class SAM2Base(torch.nn.Module):
         self.pred_obj_scores_mlp = pred_obj_scores_mlp
         self.fixed_no_obj_ptr = fixed_no_obj_ptr
         self.soft_no_obj_ptr = soft_no_obj_ptr
+        self.min_obj_score_logits = 0# -1
+
         if self.fixed_no_obj_ptr:
             assert self.pred_obj_scores
             assert self.use_obj_ptrs_in_encoder
@@ -309,6 +311,12 @@ class SAM2Base(torch.nn.Module):
         processor_dino=None,
         model_dino=None,
         alfa_flow=None,
+        direct_comp_to_prev_pred=False,
+        backward_of=False,
+        interpolation='bilinear', 
+        kernel_size=3, 
+        close_trans=False, 
+        open_trans=False,
     ):
         """
         Forward SAM prompt encoders and mask heads.
@@ -407,7 +415,7 @@ class SAM2Base(torch.nn.Module):
             high_res_features=high_res_features,
         )
         if self.pred_obj_scores:
-            is_obj_appearing = object_score_logits > 0
+            is_obj_appearing = object_score_logits > self.min_obj_score_logits #0
 
             # Mask used for spatial memories is always a *hard* choice between obj and no obj,
             # consistent with the actual mask prediction
@@ -519,20 +527,52 @@ class SAM2Base(torch.nn.Module):
                 second_mask = get_full_size_mask(second_mask, bbox, H, W)
                 third_mask = get_full_size_mask(third_mask, bbox, H, W)
 
-
                 if np.any(prev_mask[0] > 0) and np.any(first_mask > 0) and np.any(second_mask > 0) and np.any(third_mask > 0):
-                    of_mask = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", prev_mask[0], frame_idx+1, seq=seq)
-                
-                    iou1 = alfa_flow * obatin_iou(first_mask, of_mask) + (1 - alfa_flow) * ious[0][0].item()
-                    iou2 = alfa_flow * obatin_iou(second_mask, of_mask) + (1 - alfa_flow) * ious[0][1].item()
-                    iou3 = alfa_flow * obatin_iou(third_mask, of_mask) + (1 - alfa_flow) * ious[0][2].item()
 
-                    if iou1 > iou2 and iou1 > iou3:
-                        best_iou_inds = 0
-                    elif iou2 > iou1 and iou2 > iou3:
-                        best_iou_inds = 1
-                    elif iou3 > iou1 and iou3 > iou2:
-                        best_iou_inds = 2
+                    if backward_of:
+                        of_mask1 = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", 
+                            f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", first_mask, frame_idx+1, 
+                            direct_comp_to_prev_pred=direct_comp_to_prev_pred, seq=seq, 
+                            interpolation=interpolation, kernel_size=kernel_size, close_trans=close_trans, open_trans=open_trans)
+                        of_mask2 = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", 
+                            f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", second_mask, frame_idx+1, 
+                            direct_comp_to_prev_pred=direct_comp_to_prev_pred, seq=seq,
+                            interpolation=interpolation, kernel_size=kernel_size, close_trans=close_trans, open_trans=open_trans)
+                        of_mask3 = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", 
+                            f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", third_mask, frame_idx+1, 
+                            direct_comp_to_prev_pred=direct_comp_to_prev_pred, seq=seq, 
+                            interpolation=interpolation, kernel_size=kernel_size, close_trans=close_trans, open_trans=open_trans)
+
+                        iou1 = alfa_flow * obatin_iou(prev_mask[0], of_mask1) + (1 - alfa_flow) * ious[0][0].item()
+                        iou2 = alfa_flow * obatin_iou(prev_mask[0], of_mask2) + (1 - alfa_flow) * ious[0][1].item()
+                        iou3 = alfa_flow * obatin_iou(prev_mask[0], of_mask3) + (1 - alfa_flow) * ious[0][2].item()
+
+                        if iou1 > iou2 and iou1 > iou3:
+                            best_iou_inds = 0
+                        elif iou2 > iou1 and iou2 > iou3:
+                            best_iou_inds = 1
+                        elif iou3 > iou1 and iou3 > iou2:
+                            best_iou_inds = 2
+
+                        # random_number = random.choice([0, 1, 2])
+                        # best_iou_inds = random_number
+
+                    else:
+                        of_mask = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", 
+                            f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", 
+                            prev_mask[0], frame_idx+1, direct_comp_to_prev_pred=direct_comp_to_prev_pred, seq=seq, 
+                            interpolation=interpolation, kernel_size=kernel_size, close_trans=close_trans, open_trans=open_trans)
+                    
+                        iou1 = alfa_flow * obatin_iou(first_mask, of_mask) + (1 - alfa_flow) * ious[0][0].item()
+                        iou2 = alfa_flow * obatin_iou(second_mask, of_mask) + (1 - alfa_flow) * ious[0][1].item()
+                        iou3 = alfa_flow * obatin_iou(third_mask, of_mask) + (1 - alfa_flow) * ious[0][2].item()
+
+                        if iou1 > iou2 and iou1 > iou3:
+                            best_iou_inds = 0
+                        elif iou2 > iou1 and iou2 > iou3:
+                            best_iou_inds = 1
+                        elif iou3 > iou1 and iou3 > iou2:
+                            best_iou_inds = 2
 
             else:
                 best_iou_inds = torch.argmax(ious, dim=-1) 
@@ -1012,6 +1052,12 @@ class SAM2Base(torch.nn.Module):
         processor_dino=None,
         model_dino=None,
         alfa_flow=None,
+        direct_comp_to_prev_pred=False,
+        backward_of=False,
+        interpolation='bilinear', 
+        kernel_size=3, 
+        close_trans=False, 
+        open_trans=False,
     ):
         current_out = {"point_inputs": point_inputs, "mask_inputs": mask_inputs}
         # High-resolution feature maps for the SAM head, reshape (HW)BC => BCHW
@@ -1069,6 +1115,12 @@ class SAM2Base(torch.nn.Module):
                 processor_dino=processor_dino,
                 model_dino=model_dino,
                 alfa_flow=alfa_flow,
+                direct_comp_to_prev_pred=direct_comp_to_prev_pred,
+                backward_of=backward_of,
+                interpolation=interpolation, 
+                kernel_size=kernel_size, 
+                close_trans=close_trans, 
+                open_trans=open_trans,
             )
 
         return current_out, sam_outputs, high_res_features, pix_feat
@@ -1131,6 +1183,12 @@ class SAM2Base(torch.nn.Module):
         processor_dino=None,
         model_dino=None,
         alfa_flow=None,
+        direct_comp_to_prev_pred=False,
+        backward_of=False,
+        interpolation='bilinear', 
+        kernel_size=3, 
+        close_trans=False, 
+        open_trans=False,
     ):  
         self.memory_temporal_stride_for_eval = memory_stride
 
@@ -1158,6 +1216,12 @@ class SAM2Base(torch.nn.Module):
             processor_dino,
             model_dino,
             alfa_flow,
+            direct_comp_to_prev_pred,
+            backward_of,
+            interpolation, 
+            kernel_size, 
+            close_trans, 
+            open_trans,
         )
 
 
