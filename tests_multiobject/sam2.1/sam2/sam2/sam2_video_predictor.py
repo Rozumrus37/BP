@@ -15,6 +15,7 @@ from sam2.modeling.sam2_base import NO_OBJ_SCORE, SAM2Base
 from sam2.utils.misc import concat_points, fill_holes_in_mask_scores, load_video_frames
 
 import numpy as np 
+from PIL import ImageDraw
 from PIL import Image
 
 class SAM2VideoPredictor(SAM2Base):
@@ -153,7 +154,7 @@ class SAM2VideoPredictor(SAM2Base):
 
     @torch.inference_mode()
     def load_first_frame(self, inference_state, img_path, frame_idx=0, bbox=None):
-        img, height, width = self._load_image_as_tensor(img_path, image_size=self.image_size, bbox=bbox)
+        img, height, width = self._load_image_as_tensor(img_path, image_size=self.image_size, bbox=bbox, frame_idx=frame_idx)
 
         img_mean=(0.485, 0.456, 0.406)
         img_std=(0.229, 0.224, 0.225)
@@ -186,8 +187,28 @@ class SAM2VideoPredictor(SAM2Base):
             self._get_image_feature(inference_state, frame_idx=0, batch_size=1)
 
 
+    def mask_image_outside_bbox(self, image, bbox):
+        """
+        Masks everything outside the bounding box with black.
 
-    def _load_image_as_tensor(self, img_path, image_size, bbox=None):
+        :param image: PIL.Image object
+        :param bbox: Tuple (left, top, right, bottom) defining the bounding box
+        :return: PIL.Image with areas outside the bounding box masked black
+        """
+        # Create a mask with the same size as the image
+        mask = Image.new("L", image.size, 0)
+        
+        # Draw the bounding box on the mask
+        draw = ImageDraw.Draw(mask)
+        draw.rectangle(bbox, fill=255)
+        
+        # Apply the mask to the image
+        black_image = Image.new("RGB", image.size, (0, 0, 0))  # Background black
+        result = Image.composite(image, black_image, mask)
+        return result
+
+
+    def _load_image_as_tensor(self, img_path, image_size, bbox=None, frame_idx=None):
         img_pil_full_res = Image.open(img_path)  
 
         video_width_fr, video_height_fr = img_pil_full_res.size
@@ -196,12 +217,16 @@ class SAM2VideoPredictor(SAM2Base):
 
         if bbox != None:
             # print(bbox, video_width_fr, video_height_fr)
+
             img_pil = img_pil_full_res.crop(bbox)
+
+            #img_pil = self.mask_image_outside_bbox(img_pil_full_res, bbox)
+
             # print("YES")
             # print(img_path, img_pil.size, bbox, image_size,video_width_fr, video_height_fr )
             # print(img_pil.size)
 
-            # img_pil.save('image_pil_saved.png')
+            # img_pil.save(f'out_crop/{frame_idx}_image_pil_saved.png')
         else:
             img_pil = img_pil_full_res
 
@@ -518,6 +543,7 @@ class SAM2VideoPredictor(SAM2Base):
         Resize the object scores to the original video resolution (video_res_masks)
         and apply non-overlapping constraints for final output.
         """
+        # print(any_res_masks.shape)
         device = inference_state["device"]
         video_H = inference_state["video_height"]
         video_W = inference_state["video_width"]
@@ -875,6 +901,8 @@ class SAM2VideoPredictor(SAM2Base):
                 close_trans=close_trans, 
                 open_trans=open_trans,
             )
+
+            # print(video_res_masks)
 
             _, video_res_masks = self._get_orig_video_res_output(
                 inference_state, pred_masks

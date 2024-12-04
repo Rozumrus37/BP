@@ -176,6 +176,11 @@ class MemoryEncoder(nn.Module):
         x = self.fuser(x)
         x = self.out_proj(x)
 
+        # import pdb; pdb.set_trace()
+
+        # x1, x2, x3, x4 = x.shape
+    
+        # pos = self.position_encoding(torch.zeros((x1, x2, x3, x4)).to('cuda')).to(x.dtype)
         pos = self.position_encoding(x).to(x.dtype)
 
 

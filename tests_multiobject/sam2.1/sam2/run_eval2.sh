@@ -2,13 +2,60 @@
 
 # Define an array of commands
 commands=(
-    "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.25 --backward_of --sequences zebrafish1"
-    "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.5 --backward_of --sequences zebrafish1"
-    "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.1 --backward_of --sequences zebrafish1"
-    "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.15 --backward_of --sequences zebrafish1"
-    "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.6 --backward_of --sequences zebrafish1"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 4 --save_res_path with256_factor4.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 9  --save_res_path with256_factor9.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 16  --save_res_path with256_factor16.csv"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 25  --save_res_path with256_factor25_duda.csv"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 36  --save_res_path with256_factor36_duda.csv"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 49  --save_res_path with256_factor49_duda.csv"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 64  --save_res_path with256_factor64_duda.csv"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 81  --save_res_path with256_factor81_duda.csv"
 
-    "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.6 --sequences zebrafish1"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 100  --save_res_path with256_factor100_duda.csv"
+
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks --save_res_path with256_factor100_RR_duda.csv"
+
+
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 121  --save_res_path with256_factor121_duda.csv"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 144  --save_res_path with256_factor144_duda.csv"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 169  --save_res_path with256_factor169_duda.csv"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 196  --save_res_path with256_factor196_duda.csv"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 225  --save_res_path with256_factor225_duda.csv"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 256  --save_res_path with256_factor256_duda.csv"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 289  --save_res_path with256_factor289_duda.csv"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 400  --save_res_path with256_factor400_duda.csv"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 625  --save_res_path with256_factor625_duda.csv"
+
+
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 100 --memory_stride 4 --save_res_path with256_factor100_MS4_duda.csv"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 100 --memory_stride 5 --save_res_path with256_factor100_MS5_duda.csv"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 100 --memory_stride 6 --save_res_path with256_factor100_MS6_duda.csv"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 100 --memory_stride 7 --save_res_path with256_factor100_MS7_duda.csv"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 100 --memory_stride 8 --save_res_path with256_factor100_MS8_duda.csv"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 100 --memory_stride 9 --save_res_path with256_factor100_MS9_duda.csv"
+    "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 100 --memory_stride 10 --save_res_path with256_factor100_MS10_duda.csv"
+
+
+
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --memory_stride 1 --save_res_path MS_1.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --memory_stride 2 --save_res_path MS_2.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --memory_stride 3 --save_res_path MS_3.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --memory_stride 4 --save_res_path MS_4.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --memory_stride 5 --save_res_path MS_5.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --memory_stride 6 --save_res_path MS_6.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --memory_stride 7 --save_res_path MS_7.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --memory_stride 8 --save_res_path MS_8.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --memory_stride 9 --save_res_path MS_9.csv"
+    # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --memory_stride 10 --save_res_path MS_10.csv"
+
+
+    # "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.25 --backward_of --sequences zebrafish1"
+    # "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.5 --backward_of --sequences zebrafish1"
+    # "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.1 --backward_of --sequences zebrafish1"
+    # "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.15 --backward_of --sequences zebrafish1"
+    # "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.6 --backward_of --sequences zebrafish1"
+
+    # "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py --use_prev_mask --alfa_flow 0.6 --sequences zebrafish1"
 
 
 

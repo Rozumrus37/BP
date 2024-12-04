@@ -26,6 +26,7 @@ import os
 import torch.nn as nn
 from optical_flow import get_mask
 import random
+# from ptl_flow import get_mask_ptl_flow
 
 # a large negative value as a placeholder score for missing objects
 NO_OBJ_SCORE = -1024.0
@@ -529,7 +530,7 @@ class SAM2Base(torch.nn.Module):
 
                 if np.any(prev_mask[0] > 0) and np.any(first_mask > 0) and np.any(second_mask > 0) and np.any(third_mask > 0):
 
-                    if backward_of:
+                    if backward_of and False:
                         of_mask1 = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", 
                             f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", first_mask, frame_idx+1, 
                             direct_comp_to_prev_pred=direct_comp_to_prev_pred, seq=seq, 
@@ -557,7 +558,7 @@ class SAM2Base(torch.nn.Module):
                         # random_number = random.choice([0, 1, 2])
                         # best_iou_inds = random_number
 
-                    else:
+                    elif False:
                         of_mask = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", 
                             f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", 
                             prev_mask[0], frame_idx+1, direct_comp_to_prev_pred=direct_comp_to_prev_pred, seq=seq, 

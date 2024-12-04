@@ -15,6 +15,9 @@ from transformers import AutoProcessor, CLIPModel, AutoImageProcessor, AutoModel
 import faiss
 import torch.nn as nn
 import csv
+from optical_flow import get_mask
+
+
 torch.autocast(device_type="cuda", dtype=torch.bfloat16).__enter__()
 
 processor_dino = AutoImageProcessor.from_pretrained('facebook/dinov2-giant')
@@ -26,6 +29,7 @@ if torch.cuda.get_device_properties(0).major >= 8:
     torch.backends.cudnn.allow_tf32 = True
 
 SEQ = ['agility', 'animal', 'ants1', 'bag', 'ball2', 'ball3', 'basketball', 'birds1', 'birds2', 'bolt1', 'book', 'bubble', 'butterfly', 'car1', 'conduction1', 'crabs1', 'dinosaur', 'diver', 'drone1', 'drone_across', 'fernando', 'fish1', 'fish2', 'flamingo1', 'frisbee', 'girl', 'graduate', 'gymnastics1', 'gymnastics2', 'gymnastics3', 'hand', 'hand2', 'handball1', 'handball2', 'helicopter', 'iceskater1', 'iceskater2', 'kangaroo', 'lamb', 'leaves', 'marathon', 'matrix', 'monkey', 'motocross1', 'nature', 'polo', 'rabbit', 'rabbit2', 'rowing', 'shaking', 'singer2', 'singer3', 'snake', 'soccer1', 'soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper', 'zebrafish1']
+#SEQ = ['ball2', 'ball3', 'basketball', 'birds1', 'birds2', 'bolt1', 'book', 'bubble', 'butterfly', 'car1', 'conduction1', 'crabs1', 'dinosaur', 'diver', 'drone1', 'drone_across', 'fernando', 'fish1', 'fish2', 'flamingo1', 'frisbee', 'girl', 'graduate', 'gymnastics1', 'gymnastics2', 'gymnastics3', 'hand', 'hand2', 'handball1', 'handball2', 'helicopter', 'iceskater1', 'iceskater2', 'kangaroo', 'lamb', 'leaves', 'marathon', 'matrix', 'monkey', 'motocross1', 'nature', 'polo', 'rabbit', 'rabbit2', 'rowing', 'shaking', 'singer2', 'singer3', 'snake', 'soccer1', 'soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper', 'zebrafish1']
 
 
 # SEQ =['singer3', 'snake', 'soccer1', 'soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper']
@@ -89,6 +93,7 @@ def run_eval(seq):
     output_dir = "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + str(seq) + "_oracle" if oracle else "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + str(seq) 
     frame_names = load_frames(video_dir, double_memory_bank)
     inference_state = predictor.init_state()
+    start_idx = 1
     mask_first_frame = get_nth_mask(seq, 0)
     H, W = mask_first_frame.shape 
     bbox = None
@@ -97,6 +102,7 @@ def run_eval(seq):
     
 
     if crop_gt or use_prev_box:
+                
         min_row, min_col, max_row, max_col = get_bounding_box(mask_first_frame)
 
         area = abs(min_row-max_row) * abs(min_col-max_col)
@@ -120,7 +126,7 @@ def run_eval(seq):
         mask_first_frame = mask_first_frame[min_col:max_col, min_row:max_row]
 
     image_path = os.path.join(video_dir, '00000001.jpg')
-    start_idx = 1
+
 
     if double_memory_bank:
         predictor.load_first_frame(inference_state, image_path, bbox=bbox,frame_idx=0)
@@ -190,11 +196,21 @@ def run_eval(seq):
             bbox = prev_bbox
 
         if crop_gt:
+
+            # of_mask = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{out_frame_idx:0{8}d}.jpg", 
+            #     f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{out_frame_idx+1:0{8}d}.jpg", 
+            #     prev_mask[0], out_frame_idx+1, seq=seq, 
+            #     interpolation=interpolation)
+
+
             mask_curr = get_nth_mask(seq, out_frame_idx)
-            bbox = get_bounding_box(mask_curr)
-     
-            if bbox != None:
-                min_row, min_col, max_row, max_col = bbox 
+            temp_bbox = get_bounding_box(mask_curr) # mask_curr
+            
+            # import pdb; pdb.set_trace()
+            # print(bbox)
+
+            if temp_bbox != None:
+                min_row, min_col, max_row, max_col = temp_bbox 
                 if use_square_box:
                     min_col, min_row, max_col, max_row = increase_bbox_to_square(H, W, 
                         min_col, min_row, max_col, max_row, factor=factor)
@@ -202,7 +218,8 @@ def run_eval(seq):
                     min_col, min_row, max_col, max_row = increase_bbox_area(H, W, 
                         min_col, min_row, max_col, max_row, factor=factor)
 
-                bbox = min_row, min_col, max_row, max_col 
+                if min_row-max_row != 0 and min_col-max_col != 0:
+                    bbox = min_row, min_col, max_row, max_col 
 
         predictor.load_first_frame(inference_state, image_path, frame_idx=out_frame_idx, bbox=bbox)
 

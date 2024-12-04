@@ -84,6 +84,14 @@ def increase_bbox_area(H, W, min_row, min_col, max_row, max_col, factor=2):
     new_height = height * scale_factor
     new_width = width * scale_factor
 
+    if new_height < 256:
+        # print("height", new_height)
+        new_height = 256
+    
+    if new_width < 256:
+        # print("width", new_width)
+        new_width = 256
+
     # Calculate new coordinates by expanding around the center
     new_min_row = center_row - new_height / 2
     new_min_col = center_col - new_width / 2
@@ -166,6 +174,7 @@ def normalizeL2(embeddings):
 
 
 def get_full_size_mask(out_mask_logits, bbox, H, W):
+    # bbox = None
     if bbox != None:
         min_row, min_col, max_row, max_col = bbox
         filled_mask = np.zeros((H,W))
@@ -199,7 +208,7 @@ def load_frames(video_dir, double_memory=False):
 
     frame_names.sort(key=lambda p: int(os.path.splitext(p)[0]))
 
-    return  frame_names 
+    return  frame_names#[49:]
 
 
 def show_mask(mask, ax, obj_id=None, random_color=False, ann_frame_idx=0, to_save_path=None):
