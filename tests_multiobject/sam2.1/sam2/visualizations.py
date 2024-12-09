@@ -138,40 +138,21 @@ def vis_oracle(file_path=None):
 	plt.show()
 
 
-def create_video():
-	# Set the path to the directory containing the frames
-	frames_path = '/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/hand2/color'  # Replace with the path to your frames
-	output_video_path = 'hand2_output.mp4'
-	frame_rate = 24  # Set the desired frame rate (e.g., 24 fps)
+""" IoU graph visualization """
+def vis_IoU_graph(ious, file_path):
+    fig, ax = plt.subplots()
 
-	# Get all image file names in the frames directory
-	frame_files = sorted(
-	    [f for f in os.listdir(frames_path) if f.endswith(('.png', '.jpg', '.jpeg'))]
-	)
+    ax.plot(range(1, len(ious) + 1), ious, marker='o')
 
-	frame_files = [i for i in frame_files if i[0] != '.']
+    ax.set_xlabel('frame idx')
+    ax.set_ylabel('IoU')
 
-	# Ensure there are frames to create a video
-	if not frame_files:
-	    raise ValueError("No frames found in the specified directory.")
+    file_path = file_path +'.png' 
+    plt.savefig(file_path)
 
-	# Get the size of the frames
-	first_frame = cv2.imread(os.path.join(frames_path, frame_files[0]))
-	height, width, _ = first_frame.shape
+    plt.show()
 
-	# Define the video codec and create VideoWriter object
-	fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Codec for mp4
-	out = cv2.VideoWriter(output_video_path, fourcc, frame_rate, (width, height))
 
-	# Write each frame to the video
-	for frame_file in frame_files:
-	    frame = cv2.imread(os.path.join(frames_path, frame_file))
-	    out.write(frame)
-
-	# Release the video writer object
-	out.release()
-
-	print(f"Video saved as {output_video_path}")
 
 
 parser = argparse.ArgumentParser()

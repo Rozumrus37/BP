@@ -10,7 +10,19 @@ from utilities_eval import *
 # Define thresholds for bins
 thresholds = [0.005, 0.01, 0.05, 0.1, 0.20, 0.5]
 
-SEQ = ['agility', 'animal', 'ants1', 'bag', 'ball2', 'ball3', 'basketball', 'birds1', 'birds2', 'bolt1', 'book', 'bubble', 'butterfly', 'car1', 'conduction1', 'crabs1', 'dinosaur', 'diver', 'drone1', 'drone_across', 'fernando', 'fish1', 'fish2', 'flamingo1', 'frisbee', 'girl', 'graduate', 'gymnastics1', 'gymnastics2', 'gymnastics3', 'hand', 'hand2', 'handball1', 'handball2', 'helicopter', 'iceskater1', 'iceskater2', 'kangaroo', 'lamb', 'leaves', 'marathon', 'matrix', 'monkey', 'motocross1', 'nature', 'polo', 'rabbit', 'rabbit2', 'rowing', 'shaking', 'singer2', 'singer3', 'snake', 'soccer1', 'soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper', 'zebrafish1']
+base_path = "/datagrid/personal/rozumrus/BP_dg/votstval/sequences"
+
+SEQ = []
+
+for folder in os.listdir(base_path):
+    current_path = os.path.join(base_path, folder)
+
+    if os.path.isdir(current_path):
+        SEQ.append(folder)
+
+# SEQ = ['agility', 'animal', 'ants1', 'bag', 'ball2', 'ball3', 'basketball', 'birds1', 'birds2', 'bolt1', 'book', 'bubble', 'butterfly', 'car1', 'conduction1', 'crabs1', 'dinosaur', 'diver', 'drone1', 'drone_across', 'fernando', 'fish1', 'fish2', 'flamingo1', 'frisbee', 'girl', 'graduate', 'gymnastics1', 'gymnastics2', 'gymnastics3', 'hand', 'hand2', 'handball1', 'handball2', 'helicopter', 'iceskater1', 'iceskater2', 'kangaroo', 'lamb', 'leaves', 'marathon', 'matrix', 'monkey', 'motocross1', 'nature', 'polo', 'rabbit', 'rabbit2', 'rowing', 'shaking', 'singer2', 'singer3', 'snake', 'soccer1', 'soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper', 'zebrafish1']
+
+
 
 
 average_segmentation_areas = []
@@ -25,8 +37,8 @@ for seq in SEQ:
     area = abs(min_row-max_row) * abs(min_col-max_col)
     bbox_area = area * 1.0 / mask_first_frame.size
 
-    if segmentation_area < 0.2 and segmentation_area > 0.1:
-        print(f"{seq} and {segmentation_area*100} and bbox area: {bbox_area*100}\n")
+    # if segmentation_area < 0.2 and segmentation_area > 0.1:
+    #     print(f"{seq} and {segmentation_area*100} and bbox area: {bbox_area*100}\n")
 
     average_segmentation_areas.append(segmentation_area)
     average_bounding_box_areas.append(bbox_area)
@@ -65,7 +77,7 @@ ax.set_xticklabels(labels)
 ax.legend()
 
 # Save the histogram
-plt.savefig('segmentation_vs_bounding_box_histogram.png')
+plt.savefig('segm_area_vot24stval.png')
 
 
 print("Histogram saved as 'segmentation_vs_bounding_box_histogram.png' and bin counts saved as 'segmentation_vs_bounding_box_bins.csv'.")

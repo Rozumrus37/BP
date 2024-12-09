@@ -34,12 +34,14 @@ class SAM2Tracker(object):
         self.predictor = build_sam2_video_predictor(model_cfg, sam2_checkpoint) 
 
         self.inference_state = self.predictor.init_state()
-        self.memory_stride = 7
+        self.memory_stride = 5
         self.prev_mask_increase_when_empty = False
-        self.factor = 100
+        self.factor = 9
         self.exclude_empty_masks = True
         self.use_RR_sam2 = True
         self.prev_bbox = None
+        self.no_mask_set_whole_image = False
+        self.min_box_factor = 512
 
         iimage = cv2.imread(imagefile, cv2.IMREAD_UNCHANGED)
         iimage = cv2.cvtColor(iimage, cv2.COLOR_BGR2RGB)
@@ -53,16 +55,10 @@ class SAM2Tracker(object):
 
         if self.use_RR_sam2:
             min_row, min_col, max_row, max_col = get_bounding_box(mask)
-
-            # area = abs(min_row-max_row) * abs(min_col-max_col)
-
-            # if area / (self.H*self.W*1.0) >= 0.1:
-            #     self.use_RR_sam2 = False
-            # else:
-            min_col, min_row, max_col, max_row = increase_bbox_area(self.H, self.W, min_col, min_row, max_col, max_row, factor=self.factor)
+            min_row, min_col, max_row, max_col = increase_bbox_area(self.H, self.W, min_row, min_col, max_row, max_col, min_box_factor=self.min_box_factor, factor=self.factor)
 
             bbox = (min_row, min_col, max_row, max_col)
-            mask = mask[min_col:max_col, min_row:max_row]
+            mask = mask[min_row:max_row, min_col:max_col]
 
         self.predictor.load_first_frame(self.inference_state, image, bbox=bbox)
         _, _, out_mask_logits = self.predictor.add_new_mask(
@@ -102,7 +98,7 @@ class SAM2Tracker(object):
             if bbox != None:
                 min_row, min_col, max_row, max_col = bbox
                 
-                min_col, min_row, max_col, max_row = increase_bbox_area(self.H, self.W, min_col, min_row, max_col, max_row, factor=self.factor)
+                min_row, min_col, max_row, max_col = increase_bbox_area(self.H, self.W, min_row, min_col, max_row, max_col, min_box_factor=self.min_box_factor, factor=self.factor)
 
                 if min_row-max_row != 0 and min_col-max_col != 0:
                     self.prev_bbox = (min_row, min_col, max_row, max_col)
@@ -110,10 +106,13 @@ class SAM2Tracker(object):
             elif self.prev_mask_increase_when_empty:
                 min_row, min_col, max_row, max_col = self.prev_bbox
                 
-                min_col, min_row, max_col, max_row = increase_bbox_area(self.H, self.W, min_col, min_row, max_col, max_row, factor=2)
+                min_row, min_col, max_row, max_col = increase_bbox_area(self.H, self.W, min_row, min_col, max_row, max_col, min_box_factor=self.min_box_factor, factor=2)
 
                 if min_row-max_row != 0 and min_col-max_col != 0:
                     self.prev_bbox = (min_row, min_col, max_row, max_col)
+
+            elif self.no_mask_set_whole_image:
+                self.prev_bbox = None
 
             output = np.array(mask_full_size).astype(np.uint8) 
         else:

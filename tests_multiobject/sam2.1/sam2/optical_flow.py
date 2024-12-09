@@ -15,7 +15,7 @@ import cv2
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 weights = Raft_Large_Weights.DEFAULT # RAFT-LARGE
-transforms = weights.transforms() # Transforms the image to the correct representation (maps to [-1;1] iirc)
+transforms = weights.transforms() # Transforms the image to the correct representation (maps to [-1;1])
 model = raft_large(weights=Raft_Large_Weights.DEFAULT, progress=False).to(device) 
 model = model.eval() # evaluation mode
 

@@ -7,23 +7,54 @@ commands=(
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 16 --crop_gt --save_res_path gt_factor16.csv"
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 25 --crop_gt --save_res_path gt_factor25.csv"
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 36 --crop_gt --save_res_path gt_factor36.csv"
-    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 49 --crop_gt --save_res_path gt_factor49_duda.csv"
-    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 64 --crop_gt --save_res_path gt_factor64_duda.csv"
-    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 81 --crop_gt --save_res_path gt_factor81_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 49 --crop_gt --save_res_path gt_factor49_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 64 --crop_gt --save_res_path gt_factor64_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 81 --crop_gt --save_res_path gt_factor81_duda.csv"
 
-    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 100 --crop_gt --save_res_path gt_factor100_duda.csv"
-    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 121 --crop_gt --save_res_path gt_factor121_duda.csv"
-    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 144 --crop_gt --save_res_path gt_factor144_duda.csv"
-    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 169 --crop_gt --save_res_path gt_factor169_duda.csv"
-    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 196 --crop_gt --save_res_path gt_factor196_duda.csv"
-    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 225 --crop_gt --save_res_path gt_factor225_duda.csv"
-    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 256 --crop_gt --save_res_path gt_factor256_duda.csv"
-    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 289 --crop_gt --save_res_path gt_factor289_duda.csv"
-    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 400 --crop_gt --save_res_path gt_factor400_duda.csv"
-    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 625 --crop_gt --save_res_path gt_factor625_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 100 --crop_gt --save_res_path gt_factor100_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 121 --crop_gt --save_res_path gt_factor121_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 144 --crop_gt --save_res_path gt_factor144_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 169 --crop_gt --save_res_path gt_factor169_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 196 --crop_gt --save_res_path gt_factor196_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 225 --crop_gt --save_res_path gt_factor225_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 256 --crop_gt --save_res_path gt_factor256_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 289 --crop_gt --save_res_path gt_factor289_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 400 --crop_gt --save_res_path gt_factor400_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 625 --crop_gt --save_res_path gt_factor625_duda.csv"
+
+
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 4 --min_box_factor 512  --save_res_path with512_factor4_duda.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 9 --min_box_factor 512  --save_res_path with512_factor9_duda.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 16 --min_box_factor 512  --save_res_path with512_factor16_duda.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 25 --min_box_factor 512  --save_res_path with512_factor25_duda.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 36 --min_box_factor 512  --save_res_path with512_factor36_duda.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 49 --min_box_factor 512  --save_res_path with512_factor49_duda.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 64 --min_box_factor 512  --save_res_path with512_factor64_duda.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 81 --min_box_factor 512  --save_res_path with512_factor81_duda.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 121 --min_box_factor 512  --save_res_path with512_factor121_duda.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 144 --min_box_factor 512  --save_res_path with512_factor144_duda.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 169 --min_box_factor 512  --save_res_path with512_factor169_duda.csv"
+    "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 400 --min_box_factor 512  --save_res_path with512_factor400_duda.csv"
 
 
 
+
+
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 36 --min_box_factor 512  --save_res_path with64_factor36_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 49  --save_res_path with128_factor49_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 64  --save_res_path with128_factor64_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 81  --save_res_path with128_factor81_duda.csv"
+
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 100  --save_res_path with128_factor100_duda.csv"
+
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 100 --memory_stride 7 --exclude_empty_masks --save_res_path with128_factor100_RR7_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 100 --memory_stride 6 --exclude_empty_masks --save_res_path with128_factor100_RR6_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 100 --memory_stride 5 --exclude_empty_masks --save_res_path with128_factor100_RR5_duda.csv"
+
+
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 121  --save_res_path with128_factor121_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 144  --save_res_path with128_factor144_duda.csv"
+    # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 169  --save_res_path with128_factor169_duda.csv"
 
 
 

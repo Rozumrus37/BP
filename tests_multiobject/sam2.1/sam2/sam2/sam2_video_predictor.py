@@ -167,17 +167,12 @@ class SAM2VideoPredictor(SAM2Base):
         if not ("images" in inference_state):
             inference_state["images"] = [img]
         else:
-           
             if frame_idx < len(inference_state["images"]):
-                # print("YES")
                 inference_state["images"][frame_idx] = img
             else:
                 inference_state["images"].append(img)
 
-            # print(frame_idx, len(inference_state["images"]))
-
         inference_state["num_frames"] = len(img)
-
         inference_state["video_height"] = height
         inference_state["video_width"] = width
 
@@ -217,10 +212,10 @@ class SAM2VideoPredictor(SAM2Base):
 
         if bbox != None:
             # print(bbox, video_width_fr, video_height_fr)
+            min_row, min_col, max_row, max_col = bbox
 
-            img_pil = img_pil_full_res.crop(bbox)
+            img_pil = img_pil_full_res.crop((min_col, min_row, max_col, max_row))
 
-            #img_pil = self.mask_image_outside_bbox(img_pil_full_res, bbox)
 
             # print("YES")
             # print(img_path, img_pil.size, bbox, image_size,video_width_fr, video_height_fr )
@@ -824,7 +819,9 @@ class SAM2VideoPredictor(SAM2Base):
         kernel_size=3, 
         close_trans=False, 
         open_trans=False,
+        use_log_memory_stride=False,
     ):  
+
 
         # out_frame_idx = frame_idx
 
@@ -900,6 +897,7 @@ class SAM2VideoPredictor(SAM2Base):
                 kernel_size=kernel_size, 
                 close_trans=close_trans, 
                 open_trans=open_trans,
+                use_log_memory_stride=use_log_memory_stride,
             )
 
             # print(video_res_masks)
@@ -1252,6 +1250,7 @@ class SAM2VideoPredictor(SAM2Base):
         kernel_size=3, 
         close_trans=False, 
         open_trans=False,
+        use_log_memory_stride=False,
     ):
         """Run tracking on a single frame based on current inputs and previous memory."""
         # Retrieve correct image features
@@ -1298,6 +1297,7 @@ class SAM2VideoPredictor(SAM2Base):
             kernel_size=kernel_size, 
             close_trans=close_trans, 
             open_trans=open_trans,
+            use_log_memory_stride=use_log_memory_stride,
         )
 
         # optionally offload the output to CPU memory to save GPU space

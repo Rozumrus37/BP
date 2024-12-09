@@ -4,102 +4,68 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import numpy as np
 import os 
-from compute_iou import *
-
-
+from vot.region import io
 from transformers import AutoProcessor, CLIPModel, AutoImageProcessor, AutoModel
 import faiss
 
 
-def extract_frames(video_path, output_folder, target_fps=12):
-    # Create VideoReader object
-    vid = cv2.VideoCapture(video_path)
-    original_fps = vid.get(cv2.CAP_PROP_FPS)  # Get original frames per second (fps) of the video
-    frame_count = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
-    frame_number = 0
-    save_frame_number = 0
-
-    # Calculate frame interval to match target fps
-    frame_interval = int(original_fps / target_fps) if original_fps > target_fps else 1
-
-    print(f"Original FPS: {original_fps}")
-    print(f"Target FPS: {target_fps}")
-    print(f"Frame interval for extraction: {frame_interval}")
-
-    while vid.isOpened():
-        ret, frame = vid.read()
-        if not ret:
-            break
-
-        # Save every nth frame to match target FPS
-        if frame_number % frame_interval == 0:
-            # Format frame number to be zero-padded (e.g., 0000, 0001, ...)
-            frame_name = f"{save_frame_number:04d}.jpg"
-            output_path = os.path.join(output_folder, frame_name)
-
-            # Save frame as an image
-            cv2.imwrite(output_path, frame)
-            print(f"Saved frame {frame_name}")
-            save_frame_number += 1
-
-        frame_number += 1
-
-    vid.release()
-    print("All frames extracted successfully.")
-
-    # # Create VideoReader object
-    # vid = cv2.VideoCapture(video_path)
-    # frame_count = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
-    # frame_number = 0
-
-    # while vid.isOpened():
-    #     ret, frame = vid.read()
-    #     if not ret:
-    #         break
-
-    #     # Format frame number to be zero-padded (e.g., 0000, 0001, ...)
-    #     frame_name = f"{frame_number:04d}.jpg"
-    #     output_path = os.path.join(output_folder, frame_name)
-
-    #     # Save frame as an image
-    #     cv2.imwrite(output_path, frame)
-    #     print(f"Saved frame {frame_name}")
-
-    #     frame_number += 1
-
-    # vid.release()
+""" Get the bounding box of the given segmentation """
+def get_bounding_box(segmentation):
+    rows, cols = np.where(segmentation == True)
+    
+    if len(rows) == 0 or len(cols) == 0:
+        return None
+    
+    min_row, max_row = np.min(rows), np.max(rows)
+    min_col, max_col = np.min(cols), np.max(cols)
+    
+    return (min_row, min_col, max_row, max_col)
 
 
-def increase_bbox_area(H, W, min_row, min_col, max_row, max_col, factor=2):
-    # Calculate the center of the original rectangle
+""" Insert the cropped segmentaiton back to the original dimensions of the image """
+def get_full_size_mask(out_mask_logits, bbox, H, W):
+    if bbox != None:
+        min_row, min_col, max_row, max_col = bbox
+        filled_mask = np.zeros((H,W))
+
+        filled_mask[min_row:max_row, min_col:max_col] = (out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0]
+    else:
+        filled_mask = (out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0]
+
+    return filled_mask
+
+
+""" Increase the height and width of the original bounding box by the factor and align 
+the new boudning box to the orignal bounding box's center """
+def increase_bbox_area(H, W, min_row, min_col, max_row, max_col, min_box_factor=256, factor=2):
+    # calculate the center of the original bbox
     center_row = (min_row + max_row) / 2
     center_col = (min_col + max_col) / 2
 
-    # Calculate the current width and height
+    # calculate the height and width of the original bbox
     height = max_row - min_row
     width = max_col - min_col
 
-    # Double the width and height by multiplying by sqrt(2)
-    scale_factor = factor**0.5
+    # multiply height and width by the scale factor
+    scale_factor = factor ** 0.5
     new_height = height * scale_factor
     new_width = width * scale_factor
 
-    if new_height < 256:
-        # print("height", new_height)
-        new_height = 256
-    
-    if new_width < 256:
-        # print("width", new_width)
-        new_width = 256
+    MIN_LEN = min_box_factor
 
-    # Calculate new coordinates by expanding around the center
+    if new_height < MIN_LEN:
+        new_height = MIN_LEN
+    
+    if new_width < MIN_LEN:
+        new_width = MIN_LEN
+
+    # calculate new coordinates of the bbox by aligning to the original bbox center
     new_min_row = center_row - new_height / 2
     new_min_col = center_col - new_width / 2
     new_max_row = center_row + new_height / 2
     new_max_col = center_col + new_width / 2
 
-
-     # Apply boundary constraints to keep the box within the image
+    # check the boundaries and adjust if needed
     if new_min_row < 0:
         new_min_row = 0
     if new_min_col < 0:
@@ -109,51 +75,72 @@ def increase_bbox_area(H, W, min_row, min_col, max_row, max_col, factor=2):
     if new_max_col > W:
         new_max_col = W
 
-
     return int(new_min_row), int(new_min_col), int(new_max_row), int(new_max_col)
 
-
+""" Similiar to increase_bbox_area but make a square """
 def increase_bbox_to_square(H, W, min_row, min_col, max_row, max_col, factor=2):
-    # Calculate the center of the original rectangle
+    # calculate the center of the original bbox
     center_row = (min_row + max_row) / 2
     center_col = (min_col + max_col) / 2
 
-    # Calculate the current width and height
+    # calculate the height and width of the original bbox
     height = max_row - min_row
     width = max_col - min_col
 
-    # Double the width and height by multiplying by sqrt(2)
-    new_height = factor*max(height, width) #height * scale_factor
-    new_width = factor*max(height, width) # width * scale_factor
+    # find the maximum between height and weight and assign the largest as new square side
+    new_height = factor * max(height, width) # height * scale_factor
+    new_width = factor * max(height, width) # width * scale_factor
 
-    # Calculate new coordinates by expanding around the center
+    # calculate new coordinates of the bbox by aligning to the original bbox center
     new_min_row = center_row - new_height / 2
     new_min_col = center_col - new_width / 2
     new_max_row = center_row + new_height / 2
     new_max_col = center_col + new_width / 2
 
+    MIN_LEN = 256
 
-     # Apply boundary constraints to keep the box within the image
+    if new_height < MIN_LEN:
+        new_height = MIN_LEN
+    
+    if new_width < MIN_LEN:
+        new_width = MIN_LEN
+
+    # check the boundaries and adjust if needed
     if new_min_row < 0:
         new_min_row = 0
     if new_min_col < 0:
         new_min_col = 0
     if new_max_row > H:
-        new_max_row = H-1
+        new_max_row = H
     if new_max_col > W:
-        new_max_col = W-1
-
+        new_max_col = W
 
     return int(new_min_row), int(new_min_col), int(new_max_row), int(new_max_col)
 
+
+""" Load the frames names from the directory into the list. Then sort them in ascending order """
+def load_frames(video_dir, double_memory=False):
+    frame_names = [
+        p for p in os.listdir(video_dir)
+        if os.path.splitext(p)[-1] in [".jpg", ".jpeg", ".JPG", ".JPEG"]
+    ]
+
+    # Remove hidden files
+    if double_memory:
+        frame_names = [i for i in frame_names if i[0] != '.'] + [i for i in frame_names if i[0] != '.']
+    else:
+        frame_names = [i for i in frame_names if i[0] != '.']
+
+    frame_names.sort(key=lambda p: int(os.path.splitext(p)[0]))
+
+    return  frame_names
+
+
+""" DINO methods starts here (some experiments have been made with the model) """
 def add_vector_to_index(embedding, index):
-    #convert embedding to numpy
     vector = embedding.detach().cpu().numpy()
-    #Convert to float32 numpy
     vector = np.float32(vector)
-    #Normalize vector: important to avoid wrong results when searching
     faiss.normalize_L2(vector)
-    #Add to index
     index.add(vector)
 
 def extract_features_dino(image):
@@ -172,119 +159,5 @@ def normalizeL2(embeddings):
     faiss.normalize_L2(vector)
     return vector
 
-
-def get_full_size_mask(out_mask_logits, bbox, H, W):
-    # bbox = None
-    if bbox != None:
-        min_row, min_col, max_row, max_col = bbox
-        filled_mask = np.zeros((H,W))
-
-        filled_mask[min_col:max_col, min_row:max_row] = (out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0]
-    else:
-        filled_mask = (out_mask_logits[0] > 0.0).cpu().numpy().astype(np.uint8)[0]
-
-    return filled_mask
-
-def check_boundaries(H, W, min_row, min_col, max_row, max_col):
-    if min_row < 0 or min_col < 0:
-        return False  # Bounding box cannot start from a negative position
-    if max_row >= W or max_col >= H:
-        return False  # Bounding box cannot exceed the height or width
-    if min_row > max_row or min_col > max_col:
-        return False  # Invalid bounding box dimensions
-
-    return True  # Bounding box fits within the given dimensions
-
-def load_frames(video_dir, double_memory=False):
-    frame_names = [
-        p for p in os.listdir(video_dir)
-        if os.path.splitext(p)[-1] in [".jpg", ".jpeg", ".JPG", ".JPEG"]
-    ]
-
-    if double_memory:
-        frame_names = [i for i in frame_names if i[0] != '.'] + [i for i in frame_names if i[0] != '.']
-    else:
-        frame_names = [i for i in frame_names if i[0] != '.']
-
-    frame_names.sort(key=lambda p: int(os.path.splitext(p)[0]))
-
-    return  frame_names#[49:]
-
-
-def show_mask(mask, ax, obj_id=None, random_color=False, ann_frame_idx=0, to_save_path=None):
-    if random_color:
-        color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
-    else:
-        cmap = plt.get_cmap("tab10")
-        cmap_idx = 0 if obj_id is None else obj_id
-        color = np.array([*cmap(cmap_idx)[:3], 0.6])
-    h, w = mask.shape[-2:]
-    mask_image = mask.reshape(h, w, 1) * color.reshape(1, 1, -1)
-
-    DIR = to_save_path
-
-    if not os.path.exists(DIR):
-        os.makedirs(DIR)
-
-    final_path = os.path.join(DIR, str(ann_frame_idx) + '.png')
-
-    ax.imshow(mask_image)
-    plt.savefig(final_path, pad_inches=0, bbox_inches='tight')
-    
-def get_bounding_box(segmentation):
-    cols, rows = np.where(segmentation == True)
-    
-    if len(rows) == 0 or len(cols) == 0:
-        return None
-    
-    min_row, max_row = np.min(rows), np.max(rows)
-    min_col, max_col = np.min(cols), np.max(cols)
-    
-    return (min_row, min_col, max_row, max_col)
-
-def vis_IoU_graph(ious, file_path):
-    fig, ax = plt.subplots()
-
-    ax.plot(range(1, len(ious) + 1), ious, marker='o')
-
-    ax.set_xlabel('frame idx')
-    ax.set_ylabel('IoU')
-
-    file_path = file_path +'.png' 
-    plt.savefig(file_path)
-
-    plt.show()
-
-
-def create_video_from_frames(dir_path, output_video='output_video.mp4', fps=5):
-    images = [img for img in os.listdir(dir_path) if img.endswith((".png", ".jpg", ".jpeg")) and not img.startswith('.')]
-    images.sort(key=lambda p: int(os.path.splitext(p)[0])) # Sort files by name to maintain the correct frame order
-
-    if not images:
-        print("No image files found in the directory.")
-        return
-
-    # Read the first image to get the dimensions
-    first_image = cv2.imread(os.path.join(dir_path, images[0]))
-    height, width, layers = first_image.shape
-
-    # Define the video codec and create VideoWriter object
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    video = cv2.VideoWriter(output_video, fourcc, fps, (width, height))
-
-    # Loop over all images and write them to the video
-    for image in images:
-        img = cv2.imread(os.path.join(dir_path, image))
-        video.write(img)
-
-    # Release the video writer
-    video.release()
-    print(f"Video created successfully: {output_video}")
-
-# extract_frames("/datagrid/personal/rozumrus/BP_dg/collected_videos/rolling_wallnuts.mov", "/datagrid/personal/rozumrus/BP_dg/collected_videos/rolling_wallnuts")
-# Example usage:
-# create_video_from_frames('/datagrid/personal/rozumrus/BP_dg/output_vot22ST/alfa0.0_nomem0_excl_EM0_OP16_L/ants1', 
-#     output_video='/datagrid/personal/rozumrus/BP_dg/output_vot22ST/ants1.mp4')
-
-# create_video_from_frames('/datagrid/personal/rozumrus/BP_dg/output_vot22ST/alfa0.0_nomem0_excl_EM0_OP16_L/zebrafish1',output_video='/datagrid/personal/rozumrus/BP_dg/output_vot22ST/zebrafish1.mp4')
+""" DINO methods finish here """
 
