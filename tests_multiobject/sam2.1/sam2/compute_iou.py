@@ -7,6 +7,8 @@ import numpy as np
 from vot.region import io
 import cv2
 
+VOT2022ST_base = "/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences"
+VOT2020ST_base = "/mnt/data_personal/rozumrus/BP_dg/vot2020ST/sequences"
 
 """ Processing the VOT format binary gt mask """
 def apply_mask_to_image(binary_mask, offset, file_path):
@@ -25,10 +27,10 @@ def apply_mask_to_image(binary_mask, offset, file_path):
 """ Get n-th mask for the given sequence """
 def get_nth_mask(gt_folder_name, n):
     # path to groundtruth directory
-    file_path = os.path.join("/datagrid/personal/rozumrus/BP_dg/votstval/sequences", gt_folder_name, 'groundtruth_object1.txt')
+    file_path = os.path.join(VOT2020ST_base, gt_folder_name, 'groundtruth.txt')
 
     # path to the image directory  
-    file_path_img = os.path.join("/datagrid/personal/rozumrus/BP_dg/votstval/sequences", gt_folder_name, 'color/00000001.jpg')
+    file_path_img = os.path.join(VOT2020ST_base, gt_folder_name, 'color/00000001.jpg')
 
     with open(file_path, 'r') as file:
         lines_gt = file.readlines()
@@ -65,7 +67,7 @@ def obatin_iou(array1, array2):
 
 """ Compute IoU between predicted masks and gt masks """
 def get_iou(gt_folder_name, predicted_masks):
-    file_path = os.path.join("/datagrid/personal/rozumrus/BP_dg/votstval/sequences", gt_folder_name, 'groundtruth_object1.txt')   
+    file_path = os.path.join(VOT2020ST_base, gt_folder_name, 'groundtruth.txt')   
 
     with open(file_path, 'r') as file:
         lines_gt = file.readlines()

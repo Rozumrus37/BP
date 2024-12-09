@@ -308,8 +308,6 @@ class SAM2Base(torch.nn.Module):
         prev_mask=None,
         H_original=None,
         W_original=None,
-        processor_dino=None,
-        model_dino=None,
         alfa_flow=None,
         direct_comp_to_prev_pred=False,
         backward_of=False,
@@ -317,6 +315,8 @@ class SAM2Base(torch.nn.Module):
         kernel_size=3, 
         close_trans=False, 
         open_trans=False,
+        oracle=False,
+        forward_of=False,
     ):
         """
         Forward SAM prompt encoders and mask heads.
@@ -441,9 +441,7 @@ class SAM2Base(torch.nn.Module):
         best_low_res_multimask_according_to_sam2 = None
 
         if multimask_output:
-            # import pdb; pdb.set_trace();
-
-            if seq != None and False:
+            if oracle: #seq != None and False:
                 batch_inds = torch.arange(B, device=device)
                 low_res_masks = low_res_multimasks[batch_inds, 0].unsqueeze(1)
 
@@ -499,7 +497,7 @@ class SAM2Base(torch.nn.Module):
                     miss = 1
                 
                 # print(f"For frame idx {frame_idx} the error is: {(max_oracle_iou - oracle_score_best_sam2_mask)*100: .2f}% and oracle_IoU {oracle_score_best_sam2_mask} and max {max_oracle_iou}")                
-            elif not (prev_mask is None):
+            elif forward_of or backward_of or direct_comp_to_prev_pred: #not (prev_mask is None):
 
                 best_iou_inds = torch.argmax(ious, dim=-1)
                 batch_inds = torch.arange(B, device=device)
@@ -529,18 +527,15 @@ class SAM2Base(torch.nn.Module):
 
                 if np.any(prev_mask[0] > 0) and np.any(first_mask > 0) and np.any(second_mask > 0) and np.any(third_mask > 0):
 
-                    if backward_of and False:
+                    if backward_of:
                         of_mask1 = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", 
-                            f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", first_mask, frame_idx+1, 
-                            direct_comp_to_prev_pred=direct_comp_to_prev_pred, seq=seq, 
+                            f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", first_mask, frame_idx+1, seq=seq, 
                             interpolation=interpolation, kernel_size=kernel_size, close_trans=close_trans, open_trans=open_trans)
                         of_mask2 = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", 
-                            f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", second_mask, frame_idx+1, 
-                            direct_comp_to_prev_pred=direct_comp_to_prev_pred, seq=seq,
+                            f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", second_mask, frame_idx+1, seq=seq,
                             interpolation=interpolation, kernel_size=kernel_size, close_trans=close_trans, open_trans=open_trans)
                         of_mask3 = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", 
-                            f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", third_mask, frame_idx+1, 
-                            direct_comp_to_prev_pred=direct_comp_to_prev_pred, seq=seq, 
+                            f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", third_mask, frame_idx+1, seq=seq, 
                             interpolation=interpolation, kernel_size=kernel_size, close_trans=close_trans, open_trans=open_trans)
 
                         iou1 = alfa_flow * obatin_iou(prev_mask[0], of_mask1) + (1 - alfa_flow) * ious[0][0].item()
@@ -557,10 +552,10 @@ class SAM2Base(torch.nn.Module):
                         # random_number = random.choice([0, 1, 2])
                         # best_iou_inds = random_number
 
-                    elif False:
+                    elif forward_of:
                         of_mask = get_mask(f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx:0{8}d}.jpg", 
                             f"/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/{seq}/color/" + f"{frame_idx+1:0{8}d}.jpg", 
-                            prev_mask[0], frame_idx+1, direct_comp_to_prev_pred=direct_comp_to_prev_pred, seq=seq, 
+                            prev_mask[0], frame_idx+1, seq=seq, 
                             interpolation=interpolation, kernel_size=kernel_size, close_trans=close_trans, open_trans=open_trans)
                     
                         iou1 = alfa_flow * obatin_iou(first_mask, of_mask) + (1 - alfa_flow) * ious[0][0].item()
@@ -573,6 +568,18 @@ class SAM2Base(torch.nn.Module):
                             best_iou_inds = 1
                         elif iou3 > iou1 and iou3 > iou2:
                             best_iou_inds = 2
+                    elif direct_comp_to_prev_pred:
+                        iou1 = alfa_flow * obatin_iou(first_mask, prev_mask[0]) + (1 - alfa_flow) * ious[0][0].item()
+                        iou2 = alfa_flow * obatin_iou(second_mask, prev_mask[0]) + (1 - alfa_flow) * ious[0][1].item()
+                        iou3 = alfa_flow * obatin_iou(third_mask, prev_mask[0]) + (1 - alfa_flow) * ious[0][2].item()
+
+                        if iou1 > iou2 and iou1 > iou3:
+                            best_iou_inds = 0
+                        elif iou2 > iou1 and iou2 > iou3:
+                            best_iou_inds = 1
+                        elif iou3 > iou1 and iou3 > iou2:
+                            best_iou_inds = 2
+
 
             else:
                 best_iou_inds = torch.argmax(ious, dim=-1) 
@@ -734,7 +741,6 @@ class SAM2Base(torch.nn.Module):
         output_dict,
         num_frames,
         track_in_reverse=False, # tracking in reverse time order (for demo usage)
-        double_memory_bank=False, 
         use_log_memory_stride=False,
     ):
 
@@ -766,118 +772,58 @@ class SAM2Base(torch.nn.Module):
 
             t_pos_and_prevs = [(0, out) for out in selected_cond_outputs.values()]
 
-            if double_memory_bank:
-                # Add last (self.num_maskmem - 1) frames before current frame for non-conditioning memory
-                # the earliest one has t_pos=1 and the latest one has t_pos=self.num_maskmem-1
-                # We also allow taking the memory frame non-consecutively (with stride>1), in which case
-                # we take (self.num_maskmem - 2) frames among every stride-th frames plus the last frame.
-                stride = 1 if self.training else 2*self.memory_temporal_stride_for_eval
+     
+            # Add last (self.num_maskmem - 1) frames before current frame for non-conditioning memory
+            # the earliest one has t_pos=1 and the latest one has t_pos=self.num_maskmem-1
+            # We also allow taking the memory frame non-consecutively (with stride>1), in which case
+            # we take (self.num_maskmem - 2) frames among every stride-th frames plus the last frame.
 
-                prev_frame_inds = []
-
+            if not use_log_memory_stride:
+                stride = 1 if self.training else self.memory_temporal_stride_for_eval
                 for t_pos in range(1, self.num_maskmem):
                     t_rel = self.num_maskmem - t_pos  # how many frames before current frame
                     if t_rel == 1:
                         # for t_rel == 1, we take the last frame (regardless of r)
                         if not track_in_reverse:
                             # the frame immediately before this frame (i.e. frame_idx - 1)
-                            prev_frame_idx = frame_idx - 2*t_rel
+                            prev_frame_idx = frame_idx - t_rel
                         else:
                             # the frame immediately after this frame (i.e. frame_idx + 1)
-                            prev_frame_idx = frame_idx + 2*t_rel
+                            prev_frame_idx = frame_idx + t_rel
                     else:
                         # for t_rel >= 2, we take the memory frame from every r-th frames
                         if not track_in_reverse:
                             # first find the nearest frame among every r-th frames before this frame
                             # for r=1, this would be (frame_idx - 2)
-                            prev_frame_idx = ((frame_idx - 4) // stride) * stride
+                            prev_frame_idx = ((frame_idx - 2) // stride) * stride
                             # then seek further among every r-th frames
                             prev_frame_idx = prev_frame_idx - (t_rel - 2) * stride
                         else:
                             # first find the nearest frame among every r-th frames after this frame
                             # for r=1, this would be (frame_idx + 2)
-                            prev_frame_idx = -(-(frame_idx + 4) // stride) * stride
+                            prev_frame_idx = -(-(frame_idx + 2) // stride) * stride
                             # then seek further among every r-th frames
                             prev_frame_idx = prev_frame_idx + (t_rel - 2) * stride
-
-                    prev_frame_inds.append(prev_frame_idx)
-
-                prev_frame_inds = prev_frame_inds[-3:]
-                cnt = 0
-
-                for t_pos in range(1, self.num_maskmem, 2):
-                    prev_frame_idx = prev_frame_inds[cnt] 
                     out = output_dict["non_cond_frame_outputs"].get(prev_frame_idx, None)
-
                     if out is None:
                         # If an unselected conditioning frame is among the last (self.num_maskmem - 1)
                         # frames, we still attend to it as if it's a non-conditioning frame.
                         out = unselected_cond_outputs.get(prev_frame_idx, None)
-
                     t_pos_and_prevs.append((t_pos, out))
+            else:
+                to_subtract = [0, 32, 16, 8, 4, 2, 1] 
 
-                    out = output_dict["non_cond_frame_outputs"].get(prev_frame_idx+1, None)
+                for t_pos in range(1, self.num_maskmem):
+                    t_rel = self.num_maskmem - t_pos  # how many frames before current frame
+
+                    prev_frame_idx = frame_idx - to_subtract[t_pos]
+
+                    out = output_dict["non_cond_frame_outputs"].get(prev_frame_idx, None)
                     if out is None:
                         # If an unselected conditioning frame is among the last (self.num_maskmem - 1)
                         # frames, we still attend to it as if it's a non-conditioning frame.
-                        out = unselected_cond_outputs.get(prev_frame_idx+1, None)
-
-                    t_pos_and_prevs.append((t_pos+1, out))
-
-                    cnt+=1
-
-            else:
-                # Add last (self.num_maskmem - 1) frames before current frame for non-conditioning memory
-                # the earliest one has t_pos=1 and the latest one has t_pos=self.num_maskmem-1
-                # We also allow taking the memory frame non-consecutively (with stride>1), in which case
-                # we take (self.num_maskmem - 2) frames among every stride-th frames plus the last frame.
-
-                if not use_log_memory_stride:
-                    stride = 1 if self.training else self.memory_temporal_stride_for_eval
-                    for t_pos in range(1, self.num_maskmem):
-                        t_rel = self.num_maskmem - t_pos  # how many frames before current frame
-                        if t_rel == 1:
-                            # for t_rel == 1, we take the last frame (regardless of r)
-                            if not track_in_reverse:
-                                # the frame immediately before this frame (i.e. frame_idx - 1)
-                                prev_frame_idx = frame_idx - t_rel
-                            else:
-                                # the frame immediately after this frame (i.e. frame_idx + 1)
-                                prev_frame_idx = frame_idx + t_rel
-                        else:
-                            # for t_rel >= 2, we take the memory frame from every r-th frames
-                            if not track_in_reverse:
-                                # first find the nearest frame among every r-th frames before this frame
-                                # for r=1, this would be (frame_idx - 2)
-                                prev_frame_idx = ((frame_idx - 2) // stride) * stride
-                                # then seek further among every r-th frames
-                                prev_frame_idx = prev_frame_idx - (t_rel - 2) * stride
-                            else:
-                                # first find the nearest frame among every r-th frames after this frame
-                                # for r=1, this would be (frame_idx + 2)
-                                prev_frame_idx = -(-(frame_idx + 2) // stride) * stride
-                                # then seek further among every r-th frames
-                                prev_frame_idx = prev_frame_idx + (t_rel - 2) * stride
-                        out = output_dict["non_cond_frame_outputs"].get(prev_frame_idx, None)
-                        if out is None:
-                            # If an unselected conditioning frame is among the last (self.num_maskmem - 1)
-                            # frames, we still attend to it as if it's a non-conditioning frame.
-                            out = unselected_cond_outputs.get(prev_frame_idx, None)
-                        t_pos_and_prevs.append((t_pos, out))
-                else:
-                    to_subtract = [0, 32, 16, 8, 4, 2, 1] 
-
-                    for t_pos in range(1, self.num_maskmem):
-                        t_rel = self.num_maskmem - t_pos  # how many frames before current frame
-
-                        prev_frame_idx = frame_idx - to_subtract[t_pos]
-
-                        out = output_dict["non_cond_frame_outputs"].get(prev_frame_idx, None)
-                        if out is None:
-                            # If an unselected conditioning frame is among the last (self.num_maskmem - 1)
-                            # frames, we still attend to it as if it's a non-conditioning frame.
-                            out = unselected_cond_outputs.get(prev_frame_idx, None)
-                        t_pos_and_prevs.append((t_pos, out))
+                        out = unselected_cond_outputs.get(prev_frame_idx, None)
+                    t_pos_and_prevs.append((t_pos, out))
 
 
 
@@ -1058,7 +1004,6 @@ class SAM2Base(torch.nn.Module):
         num_frames,
         track_in_reverse,
         prev_sam_mask_logits,
-        double_memory_bank,
         video_H=None, 
         video_W=None,
         seq=None,
@@ -1067,8 +1012,6 @@ class SAM2Base(torch.nn.Module):
         prev_mask=None,
         H_original=None,
         W_original=None,
-        processor_dino=None,
-        model_dino=None,
         alfa_flow=None,
         direct_comp_to_prev_pred=False,
         backward_of=False,
@@ -1077,6 +1020,8 @@ class SAM2Base(torch.nn.Module):
         close_trans=False, 
         open_trans=False,
         use_log_memory_stride=False,
+        forward_of=False,
+        oracle=False,
     ):
         current_out = {"point_inputs": point_inputs, "mask_inputs": mask_inputs}
         # High-resolution feature maps for the SAM head, reshape (HW)BC => BCHW
@@ -1106,7 +1051,6 @@ class SAM2Base(torch.nn.Module):
                 output_dict=output_dict,
                 num_frames=num_frames,
                 track_in_reverse=track_in_reverse,
-                double_memory_bank=double_memory_bank,
                 use_log_memory_stride=use_log_memory_stride,
             )
             # apply SAM-style segmentation head
@@ -1132,11 +1076,11 @@ class SAM2Base(torch.nn.Module):
                 prev_mask=prev_mask,
                 H_original=H_original,
                 W_original=W_original,
-                processor_dino=processor_dino,
-                model_dino=model_dino,
                 alfa_flow=alfa_flow,
                 direct_comp_to_prev_pred=direct_comp_to_prev_pred,
                 backward_of=backward_of,
+                forward_of=forward_of,
+                oracle=oracle,
                 interpolation=interpolation, 
                 kernel_size=kernel_size, 
                 close_trans=close_trans, 
@@ -1191,7 +1135,6 @@ class SAM2Base(torch.nn.Module):
         # The previously predicted SAM mask logits (which can be fed together with new clicks in demo).
         prev_sam_mask_logits=None,
         memory_stride=1,
-        double_memory_bank=False,
         video_H=None,
         video_W=None,
         seq=None,
@@ -1200,8 +1143,6 @@ class SAM2Base(torch.nn.Module):
         prev_mask=None,
         original_H=None,
         original_W=None,
-        processor_dino=None,
-        model_dino=None,
         alfa_flow=None,
         direct_comp_to_prev_pred=False,
         backward_of=False,
@@ -1210,40 +1151,42 @@ class SAM2Base(torch.nn.Module):
         close_trans=False, 
         open_trans=False,
         use_log_memory_stride=False,
+        oracle=False,
+        forward_of=False,
     ):  
         self.memory_temporal_stride_for_eval = memory_stride
 
         current_out, sam_outputs, _, _ = self._track_step(
-            frame_idx,
-            is_init_cond_frame,
-            current_vision_feats,
-            current_vision_pos_embeds,
-            feat_sizes,
-            point_inputs,
-            mask_inputs,
-            output_dict,
-            num_frames,
-            track_in_reverse,
-            prev_sam_mask_logits,
-            double_memory_bank,
-            video_H,
-            video_W,
-            seq,
-            oracle_threshold,
-            bbox,
-            prev_mask,
-            original_H,
-            original_W,
-            processor_dino,
-            model_dino,
-            alfa_flow,
-            direct_comp_to_prev_pred,
-            backward_of,
-            interpolation, 
-            kernel_size, 
-            close_trans, 
-            open_trans,
-            use_log_memory_stride,
+            frame_idx=frame_idx,
+            is_init_cond_frame=is_init_cond_frame,
+            current_vision_feats=current_vision_feats,
+            current_vision_pos_embeds=current_vision_pos_embeds,
+            feat_sizes=feat_sizes,
+            point_inputs=point_inputs,
+            mask_inputs=mask_inputs,
+            output_dict=output_dict,
+            num_frames=num_frames,
+            track_in_reverse=track_in_reverse,
+            prev_sam_mask_logits=prev_sam_mask_logits,
+            video_H=video_H,
+            video_W=video_W,
+            seq=seq,
+            oracle_threshold=oracle_threshold,
+            bbox=bbox,
+            prev_mask=prev_mask,
+            H_original=original_H,
+            W_original=original_W,
+            alfa_flow=alfa_flow,
+            direct_comp_to_prev_pred=direct_comp_to_prev_pred,
+            backward_of=backward_of,
+            forward_of=forward_of,
+            oracle=oracle,
+            interpolation=interpolation, 
+            kernel_size=kernel_size, 
+            close_trans=close_trans, 
+            open_trans=open_trans,
+            use_log_memory_stride=use_log_memory_stride,
+
         )
 
 

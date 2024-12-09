@@ -54,12 +54,9 @@ def preprocess_resize(img1_batch, img2_batch, H, W):
 """ Get the optical flow using built-in RAFT-Large in PyTorch """
 def get_mask(prev_frame_path, next_frame_path, 
     prev_segmentation_mask, frame_idx=None, 
-    seq=None, direct_comp_to_prev_pred=False, 
-    interpolation='bilinear', kernel_size=3, 
+    seq=None, interpolation='bilinear', kernel_size=3, 
     close_trans=False, open_trans=False):
 
-    if direct_comp_to_prev_pred: # just return the previous mask
-        return prev_segmentation_mask
 
     #######
     """ Examples for debugging """

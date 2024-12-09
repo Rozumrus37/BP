@@ -182,27 +182,6 @@ class SAM2VideoPredictor(SAM2Base):
             self._get_image_feature(inference_state, frame_idx=0, batch_size=1)
 
 
-    def mask_image_outside_bbox(self, image, bbox):
-        """
-        Masks everything outside the bounding box with black.
-
-        :param image: PIL.Image object
-        :param bbox: Tuple (left, top, right, bottom) defining the bounding box
-        :return: PIL.Image with areas outside the bounding box masked black
-        """
-        # Create a mask with the same size as the image
-        mask = Image.new("L", image.size, 0)
-        
-        # Draw the bounding box on the mask
-        draw = ImageDraw.Draw(mask)
-        draw.rectangle(bbox, fill=255)
-        
-        # Apply the mask to the image
-        black_image = Image.new("RGB", image.size, (0, 0, 0))  # Background black
-        result = Image.composite(image, black_image, mask)
-        return result
-
-
     def _load_image_as_tensor(self, img_path, image_size, bbox=None, frame_idx=None):
         img_pil_full_res = Image.open(img_path)  
 
@@ -804,14 +783,11 @@ class SAM2VideoPredictor(SAM2Base):
         memory_stride=1,
         frame_idx=0,
         prev_out=None,
-        double_memory_bank=False,
         video_H=None,
         video_W=None,
         seq=None,
         oracle_threshold=None,
         prev_mask=None,
-        processor_dino=None,
-        model_dino=None,
         alfa_flow=None,
         direct_comp_to_prev_pred=False,
         backward_of=False,
@@ -820,6 +796,8 @@ class SAM2VideoPredictor(SAM2Base):
         close_trans=False, 
         open_trans=False,
         use_log_memory_stride=False,
+        forward_of=False,
+        oracle=False,
     ):  
 
 
@@ -880,7 +858,6 @@ class SAM2VideoPredictor(SAM2Base):
                 reverse=reverse,
                 run_mem_encoder=True,
                 memory_stride=memory_stride,
-                double_memory_bank=double_memory_bank,
                 video_H=inference_state["video_height"],
                 video_W=inference_state["video_width"],
                 seq=seq,
@@ -888,8 +865,6 @@ class SAM2VideoPredictor(SAM2Base):
                 prev_mask=prev_mask,
                 original_H=self.image_height_fr,
                 original_W=self.image_width_fr,
-                processor_dino=processor_dino,
-                model_dino=model_dino,
                 alfa_flow=alfa_flow,
                 direct_comp_to_prev_pred=direct_comp_to_prev_pred,
                 backward_of=backward_of,
@@ -898,6 +873,8 @@ class SAM2VideoPredictor(SAM2Base):
                 close_trans=close_trans, 
                 open_trans=open_trans,
                 use_log_memory_stride=use_log_memory_stride,
+                forward_of=forward_of,
+                oracle=oracle,
             )
 
             # print(video_res_masks)
@@ -913,28 +890,12 @@ class SAM2VideoPredictor(SAM2Base):
 
             out_curr = None 
 
-            if double_memory_bank:
-
-                if exclude_empty_masks:
-                    if np.any(video_res_masks[0][0].cpu().numpy() > 0):
-                        out_curr = current_out
-                else:
-                    out_curr = current_out
-
-                if prev_out != None:
-                    output_dict[storage_key][frame_idx] = prev_out
-
-                    if exclude_empty_masks:
-                        if np.any(video_res_masks[0][0].cpu().numpy() > 0):
-                            output_dict[storage_key][frame_idx+1] = current_out
-                    else:
-                        output_dict[storage_key][frame_idx+1] = current_out
-            else:
-                if exclude_empty_masks:
-                    if np.any(video_res_masks[0][0].cpu().numpy() > 0):
-                        output_dict[storage_key][frame_idx] = current_out
-                else:
+      
+            if exclude_empty_masks:
+                if np.any(video_res_masks[0][0].cpu().numpy() > 0):
                     output_dict[storage_key][frame_idx] = current_out
+            else:
+                output_dict[storage_key][frame_idx] = current_out
 
       
 
@@ -1233,7 +1194,6 @@ class SAM2VideoPredictor(SAM2Base):
         run_mem_encoder,
         prev_sam_mask_logits=None,
         memory_stride=1,
-        double_memory_bank=False,
         video_H=None,
         video_W=None,
         seq=None,
@@ -1251,6 +1211,8 @@ class SAM2VideoPredictor(SAM2Base):
         close_trans=False, 
         open_trans=False,
         use_log_memory_stride=False,
+        forward_of=False,
+        oracle=False,
     ):
         """Run tracking on a single frame based on current inputs and previous memory."""
         # Retrieve correct image features
@@ -1279,7 +1241,6 @@ class SAM2VideoPredictor(SAM2Base):
             run_mem_encoder=run_mem_encoder,
             prev_sam_mask_logits=prev_sam_mask_logits,
             memory_stride=memory_stride,
-            double_memory_bank=double_memory_bank,
             video_H=video_H,
             video_W=video_W,
             seq=seq,
@@ -1288,8 +1249,6 @@ class SAM2VideoPredictor(SAM2Base):
             prev_mask=prev_mask,
             original_H=original_H,
             original_W=original_W,
-            processor_dino=processor_dino,
-            model_dino=model_dino,
             alfa_flow=alfa_flow,
             direct_comp_to_prev_pred=direct_comp_to_prev_pred,
             backward_of=backward_of,
@@ -1298,6 +1257,8 @@ class SAM2VideoPredictor(SAM2Base):
             close_trans=close_trans, 
             open_trans=open_trans,
             use_log_memory_stride=use_log_memory_stride,
+            forward_of=forward_of,
+            oracle=oracle,
         )
 
         # optionally offload the output to CPU memory to save GPU space
