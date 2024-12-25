@@ -163,9 +163,13 @@ class MemoryEncoder(nn.Module):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         ## Process masks
         # sigmoid, so that less domain shift from gt masks which are bool
+        # print("Masks init: ", masks.shape)
         if not skip_mask_sigmoid:
             masks = F.sigmoid(masks)
         masks = self.mask_downsampler(masks)
+
+        # print("IMAGE IMAEG SHAPE: ", pix_feat.shape)
+        # print("Masks: ", masks.shape)
 
         ## Fuse pix_feats and downsampled masks
         # in case the visual features are on CPU, cast them to CUDA

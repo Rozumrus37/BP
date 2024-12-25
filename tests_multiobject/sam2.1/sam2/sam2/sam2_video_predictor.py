@@ -14,9 +14,12 @@ from tqdm import tqdm
 from sam2.modeling.sam2_base import NO_OBJ_SCORE, SAM2Base
 from sam2.utils.misc import concat_points, fill_holes_in_mask_scores, load_video_frames
 
+from vis_outputs import * 
+
 import numpy as np 
 from PIL import ImageDraw
 from PIL import Image
+
 
 class SAM2VideoPredictor(SAM2Base):
     """The predictor class to handle user interactions and manage inference states."""
@@ -182,6 +185,7 @@ class SAM2VideoPredictor(SAM2Base):
             self._get_image_feature(inference_state, frame_idx=0, batch_size=1)
 
 
+
     def _load_image_as_tensor(self, img_path, image_size, bbox=None, frame_idx=None):
         img_pil_full_res = Image.open(img_path)  
 
@@ -195,7 +199,7 @@ class SAM2VideoPredictor(SAM2Base):
 
             img_pil = img_pil_full_res.crop((min_col, min_row, max_col, max_row))
 
-
+            # darken_outside_bbox(img_pil_full_res, bbox, f'out_crop/{frame_idx}_image_pil_saved.png')
             # print("YES")
             # print(img_path, img_pil.size, bbox, image_size,video_width_fr, video_height_fr )
             # print(img_pil.size)

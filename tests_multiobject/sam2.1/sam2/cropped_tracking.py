@@ -25,7 +25,7 @@ if torch.cuda.get_device_properties(0).major >= 8:
 # all sequences from the VOT2022
 SEQ_VOT2022 = ['agility', 'animal', 'ants1', 'bag', 'ball2', 'ball3', 'basketball', 'birds1', 'birds2', 'bolt1', 'book', 'bubble', 'butterfly', 'car1', 'conduction1', 'crabs1', 'dinosaur', 'diver', 'drone1', 'drone_across', 'fernando', 'fish1', 'fish2', 'flamingo1', 'frisbee', 'girl', 'graduate', 'gymnastics1', 'gymnastics2', 'gymnastics3', 'hand', 'hand2', 'handball1', 'handball2', 'helicopter', 'iceskater1', 'iceskater2', 'kangaroo', 'lamb', 'leaves', 'marathon', 'matrix', 'monkey', 'motocross1', 'nature', 'polo', 'rabbit', 'rabbit2', 'rowing', 'shaking', 'singer2', 'singer3', 'snake', 'soccer1', 'soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper', 'zebrafish1']
 SEQ_VOT2020 = ["agility", "ants1", "ball2", "ball3", "basketball", "birds1", "bolt1", "book", "butterfly", "car1", "conduction1", "crabs1", "dinosaur", "dribble", "drone1", "drone_across", "drone_flip", "fernando", "fish1", "fish2", "flamingo1", "frisbee", "girl", "glove", "godfather", "graduate", "gymnastics1", "gymnastics2", "gymnastics3", "hand", "hand02", "hand2", "handball1", "handball2", "helicopter", "iceskater1", "iceskater2", "lamb", "leaves", "marathon", "matrix", "monkey", "motocross1", "nature", "polo", "rabbit", "rabbit2", "road", "rowing", "shaking", "singer2", "singer3", "soccer1", "soccer2", "soldier", "surfing", "tiger", "wheel", "wiper", "zebrafish1"]
-
+SEQ=SEQ_VOT2022
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -56,12 +56,14 @@ min_box_factor, stack, sequences) = parse_args()
 
 if sequences != None:
     SEQ = sequences
+elif stack == "vot2020ST":
+    SEQ = SEQ_VOT2020
 
 def run_eval(seq):
     sam2_checkpoint = "checkpoints/sam2.1_hiera_large.pt" 
     model_cfg = "configs/sam2.1/sam2.1_hiera_l.yaml"
-    video_dir = f"/mnt/data_personal/rozumrus/BP_dg/{stack}/sequences/" + seq + "/color" #"/datagrid/personal/rozumrus/BP_dg/vot2020ST/sequences/" + seq + "/color"
-    output_dir = "/mnt/data_personal/rozumrus/BP_dg/sam2.1_output/" + str(seq)  #"/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + str(seq) 
+    video_dir = f"/mnt/data_personal/rozumrus/BP_dg/{stack}/sequences/" + seq + "/color" 
+    output_dir = "/mnt/data_personal/rozumrus/BP_dg/sam2.1_output/" + str(seq) 
     img_path_first_frame = os.path.join(video_dir, '00000001.jpg')
     frame_names = load_frames(video_dir)
     
@@ -70,7 +72,7 @@ def run_eval(seq):
 
     start_idx = 1
     OBJ_ID = 1
-    mask_first_frame = get_nth_mask(seq, 0)
+    mask_first_frame = get_nth_mask(seq, 0,stack=stack)
     H, W = mask_first_frame.shape 
     prev_bbox = None
     masks_all = []
@@ -125,19 +127,15 @@ def run_eval(seq):
         vis(mask_full_size, [OBJ_ID], 0, os.path.join(video_dir, frame_names[0]), output_dir)
 
         if use_prev_box or crop_gt:
-            vis_cropped(img_path_first_frame, prev_bbox, output_dir, "0")
+            vis_cropped(mask_full_size, [OBJ_ID], "0", img_path_first_frame, prev_bbox, output_dir)
 
 
     for out_frame_idx in tqdm(range(start_idx, len(frame_names))):
         image_path = os.path.join(video_dir, frame_names[out_frame_idx]) # path to the current frame
 
-        # in case we use the previous box then visualize its cropped version
-        if vis_out and use_prev_box and not crop_gt: 
-            vis_cropped(image_path, prev_bbox, output_dir, out_frame_idx)
-
         # if crop by gt bbox
         if crop_gt:
-            mask_curr = get_nth_mask(seq, out_frame_idx) # get the current gt mask
+            mask_curr = get_nth_mask(seq, out_frame_idx,stack=stack) # get the current gt mask
             temp_bbox = get_bounding_box(mask_curr) # get its bbox
 
             if temp_bbox != None:
@@ -148,7 +146,7 @@ def run_eval(seq):
                 prev_bbox = (min_row, min_col, max_row, max_col)
 
                 if vis_out:
-                    vis_cropped(image_path, prev_bbox, output_dir, out_frame_idx)
+                    vis_cropped(None, [OBJ_ID], out_frame_idx, image_path, prev_bbox, output_dir)
 
         # load current frame into the inference_state 
         predictor.load_first_frame(inference_state, image_path, frame_idx=out_frame_idx, bbox=prev_bbox)
@@ -163,10 +161,18 @@ def run_eval(seq):
             video_W=W,
             use_log_memory_stride=use_log_memory_stride)
 
+        
         # put the mask back into the original image dimensions
-        mask_full_size = get_full_size_mask(out_mask_logits, prev_bbox, H, W)
+        mask_full_size =  get_full_size_mask(out_mask_logits, prev_bbox, H, W)
         masks_all.append(mask_full_size)
         #import pdb; pdb.set_trace()
+
+        # in case we use the previous box then visualize its cropped version
+        if vis_out and use_prev_box and not crop_gt: 
+            vis_cropped(mask_full_size, [OBJ_ID], out_frame_idx, image_path, prev_bbox, output_dir)
+
+
+
 
         if vis_out:
             vis(mask_full_size, out_obj_ids, out_frame_idx, image_path, output_dir)
@@ -195,13 +201,13 @@ def run_eval(seq):
 def main():
     all_ious = []
 
-    # run through all sequences from VOT2022
+    # run through all sequences from VOT20/22
     for seq in SEQ:
         # run SAM2 on one sequence to get the output masks
         masks_all = run_eval(seq)
 
         # get mIoU between output masks and gt for the given sequnces
-        iou_curr = get_iou(seq, masks_all)
+        iou_curr = get_iou(seq, masks_all,stack=stack)
         all_ious.append(iou_curr)
 
         # save the mIoU into the .csv file

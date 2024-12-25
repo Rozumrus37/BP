@@ -910,6 +910,8 @@ class SAM2Base(torch.nn.Module):
                     to_cat_memory.append(obj_ptrs)
                     to_cat_memory_pos_embed.append(obj_pos)
                     num_obj_ptr_tokens = obj_ptrs.shape[0]
+
+                    # print("TO CAT MEMOYR:", len(to_cat_memory), to_cat_memory[0].shape, obj_ptrs.shape, self.max_obj_ptrs_in_encoder)
                 else:
                     num_obj_ptr_tokens = 0
         else:
@@ -920,6 +922,7 @@ class SAM2Base(torch.nn.Module):
                 pix_feat_with_mem = pix_feat_with_mem.permute(1, 2, 0).view(B, C, H, W)
                 return pix_feat_with_mem
 
+
             # Use a dummy token on the first frame (to avoid empty memory input to tranformer encoder)
             to_cat_memory = [self.no_mem_embed.expand(1, B, self.mem_dim)]
             to_cat_memory_pos_embed = [self.no_mem_pos_enc.expand(1, B, self.mem_dim)]
@@ -927,6 +930,8 @@ class SAM2Base(torch.nn.Module):
         # Step 2: Concatenate the memories and forward through the transformer encoder
         memory = torch.cat(to_cat_memory, dim=0)
         memory_pos_embed = torch.cat(to_cat_memory_pos_embed, dim=0)
+
+        # print("MEMMEM FINAL: ", memory.shape)
 
         pix_feat_with_mem = self.memory_attention(
             curr=current_vision_feats,

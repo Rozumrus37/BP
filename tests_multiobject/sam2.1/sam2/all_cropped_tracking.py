@@ -23,7 +23,10 @@ if torch.cuda.get_device_properties(0).major >= 8:
     torch.backends.cudnn.allow_tf32 = True
 
 # all sequences from the VOT2022
-SEQ = ['agility', 'animal', 'ants1', 'bag', 'ball2', 'ball3', 'basketball', 'birds1', 'birds2', 'bolt1', 'book', 'bubble', 'butterfly', 'car1', 'conduction1', 'crabs1', 'dinosaur', 'diver', 'drone1', 'drone_across', 'fernando', 'fish1', 'fish2', 'flamingo1', 'frisbee', 'girl', 'graduate', 'gymnastics1', 'gymnastics2', 'gymnastics3', 'hand', 'hand2', 'handball1', 'handball2', 'helicopter', 'iceskater1', 'iceskater2', 'kangaroo', 'lamb', 'leaves', 'marathon', 'matrix', 'monkey', 'motocross1', 'nature', 'polo', 'rabbit', 'rabbit2', 'rowing', 'shaking', 'singer2', 'singer3', 'snake', 'soccer1', 'soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper', 'zebrafish1']
+SEQ_VOT2022 = ['agility', 'animal', 'ants1', 'bag', 'ball2', 'ball3', 'basketball', 'birds1', 'birds2', 'bolt1', 'book', 'bubble', 'butterfly', 'car1', 'conduction1', 'crabs1', 'dinosaur', 'diver', 'drone1', 'drone_across', 'fernando', 'fish1', 'fish2', 'flamingo1', 'frisbee', 'girl', 'graduate', 'gymnastics1', 'gymnastics2', 'gymnastics3', 'hand', 'hand2', 'handball1', 'handball2', 'helicopter', 'iceskater1', 'iceskater2', 'kangaroo', 'lamb', 'leaves', 'marathon', 'matrix', 'monkey', 'motocross1', 'nature', 'polo', 'rabbit', 'rabbit2', 'rowing', 'shaking', 'singer2', 'singer3', 'snake', 'soccer1', 'soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper', 'zebrafish1']
+SEQ_VOT2020 = ["agility", "ants1", "ball2", "ball3", "basketball", "birds1", "bolt1", "book", "butterfly", "car1", "conduction1", "crabs1", "dinosaur", "dribble", "drone1", "drone_across", "drone_flip", "fernando", "fish1", "fish2", "flamingo1", "frisbee", "girl", "glove", "godfather", "graduate", "gymnastics1", "gymnastics2", "gymnastics3", "hand", "hand02", "hand2", "handball1", "handball2", "helicopter", "iceskater1", "iceskater2", "lamb", "leaves", "marathon", "matrix", "monkey", "motocross1", "nature", "polo", "rabbit", "rabbit2", "road", "rowing", "shaking", "singer2", "singer3", "soccer1", "soccer2", "soldier", "surfing", "tiger", "wheel", "wiper", "zebrafish1"]
+SEQ=SEQ_VOT2022
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -49,6 +52,7 @@ def parse_args():
     parser.add_argument('--open_trans', action="store_true")
     parser.add_argument('--oracle', action="store_true")
     parser.add_argument('--oracle_threshold', type=float, default=0)
+    parser.add_argument('--stack', default="vot2022ST")
 
     args = parser.parse_args()
 
@@ -60,22 +64,24 @@ def parse_args():
     args.crop_gt, args.factor, args.use_prev_box, 
     args.prev_mask_increase_when_empty, args.oracle, args.oracle_threshold, 
     args.alfa_flow, args.save_res_path, args.backward_of, args.direct_comp_to_prev_pred, 
-    args.interpolation, args.kernel_size, args.close_trans, args.open_trans, args.forward_of, args.use_log_memory_stride, args.sequences)
+    args.interpolation, args.kernel_size, args.close_trans, args.open_trans, args.forward_of, args.use_log_memory_stride, args.stack, args.sequences)
 
 (exclude_empty_masks, vis_out, memory_stride, 
 crop_gt, factor, use_prev_box, 
 prev_mask_increase_when_empty, oracle, oracle_threshold, 
 alfa_flow, save_res_path, backward_of, direct_comp_to_prev_pred, 
-interpolation, kernel_size, close_trans, open_trans, forward_of, use_log_memory_stride, sequences) = parse_args()
+interpolation, kernel_size, close_trans, open_trans, forward_of, use_log_memory_stride, stack, sequences) = parse_args()
 
 if sequences != None:
     SEQ = sequences
+elif stack == "VOT2020ST":
+    SEQ = SEQ_VOT2020
 
 def run_eval(seq):
     sam2_checkpoint = "checkpoints/sam2.1_hiera_large.pt" 
     model_cfg = "configs/sam2.1/sam2.1_hiera_l.yaml"
-    video_dir = "/datagrid/personal/rozumrus/BP_dg/vot22ST/sequences/" + seq + "/color"
-    output_dir = "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/" + str(seq) 
+    video_dir = f"/mnt/data_personal/rozumrus/BP_dg/{stack}/sequences/" + seq + "/color" 
+    output_dir = "/mnt/data_personal/rozumrus/BP_dg/sam2.1_output/" + str(seq) 
     img_path_first_frame = os.path.join(video_dir, '00000001.jpg')
     frame_names = load_frames(video_dir)
     
@@ -84,7 +90,7 @@ def run_eval(seq):
 
     start_idx = 1
     OBJ_ID = 1
-    mask_first_frame = get_nth_mask(seq, 0)
+    mask_first_frame = get_nth_mask(seq, 0, stack=stack)
     H, W = mask_first_frame.shape 
     prev_bbox = None
     prev_mask = None
@@ -162,7 +168,7 @@ def run_eval(seq):
 
         # if crop by gt bbox
         if crop_gt:
-            mask_curr = get_nth_mask(seq, out_frame_idx) # get the current gt mask
+            mask_curr = get_nth_mask(seq, out_frame_idx, stack=stack) # get the current gt mask
             temp_bbox = get_bounding_box(mask_curr) # get its bbox
 
             if temp_bbox != None:
@@ -250,7 +256,7 @@ def main():
         masks_all, missed_masks_perc = run_eval(seq)
 
         # get mIoU between output masks and gt for the given sequnces
-        iou_curr = get_iou(seq, masks_all)
+        iou_curr = get_iou(seq, masks_all, stack=stack)
         all_ious.append(iou_curr)
 
         total_miss += missed_masks_perc
