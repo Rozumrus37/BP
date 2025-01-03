@@ -122,7 +122,7 @@ def run_eval(seq):
 
 
     for out_frame_idx in tqdm(range(start_idx, len(frame_names))):
-        #gt_i = get_nth_mask(seq, out_frame_idx, stack=stack)
+        gt_i = get_nth_mask(seq, out_frame_idx, stack=stack)
         image_path = os.path.join(video_dir, frame_names[out_frame_idx]) # path to the current frame
         masks_i = []
 
@@ -169,9 +169,8 @@ def run_eval(seq):
             area_mask_to_area_whole_BB = H_curr_bbox * W_curr_bbox / ((H * W) / (Fs[i]**2))
 
             if (IoU_mask_i_with_mask_ori > thr_IoU_BB1_BBsm and (area_mask_to_area_whole_BB  <= thr_Amask_to_Abb)) or np.sum(mask_ori) == 0:
-                # print(np.sum(masks_i[i]) / (H*W/(Fs[i]**2)) * 100)
+                #print(area_mask_to_area_whole_BB*100, IoU_mask_i_with_mask_ori)#np.sum(masks_i[i]) / (H*W/(Fs[i]**2)) * 100)
                 best_mask = masks_i[i]
-                # best_score = iou_curr
                 break
 
             # iou_curr = obatin_iou(gt_i, masks_i[i])

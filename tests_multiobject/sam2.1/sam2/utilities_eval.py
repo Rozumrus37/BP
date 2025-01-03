@@ -9,9 +9,6 @@ from transformers import AutoProcessor, CLIPModel, AutoImageProcessor, AutoModel
 import faiss
 
 
-
-    
-
 """ Get the bounding box of the given segmentation """
 def get_bounding_box(segmentation):
     rows, cols = np.where(segmentation == True)

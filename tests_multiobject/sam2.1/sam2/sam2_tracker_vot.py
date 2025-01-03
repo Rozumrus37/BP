@@ -39,16 +39,16 @@ class SAM2Tracker(object):
         self.Fs = [4, 2, 1]
 
         self.inference_state = self.predictor.init_state()
-        self.memory_stride = 1
+        self.memory_stride = 5
         self.prev_mask_increase_when_empty = False
         self.factor = 9
-        self.exclude_empty_masks = False
+        self.exclude_empty_masks = True
         self.use_RR_sam2 = True
         self.prev_bbox = None
         self.no_mask_set_whole_image = False
         self.min_box_factor = 512
 
-        self.thr_IoU_BB1_BBsm = 0.1
+        self.thr_IoU_BB1_BBsm = 0.5
         self.thr_Amask_to_Abb = 0.1
             
         iimage = cv2.imread(imagefile, cv2.IMREAD_UNCHANGED)

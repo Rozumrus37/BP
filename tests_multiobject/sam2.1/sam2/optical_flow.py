@@ -57,7 +57,6 @@ def get_mask(prev_frame_path, next_frame_path,
     seq=None, interpolation='bilinear', kernel_size=3, 
     close_trans=False, open_trans=False):
 
-
     #######
     """ Examples for debugging """
     # next_frame_path = "tennis_shift20.jpg" #"shifted_by_10_frame1.jpg"
