@@ -19,5 +19,6 @@ tests_multiobject/trackers/.*
 *.mp4
 .old_git
 .*
+tests_multiobject/sam2.1/sam2/.*
 !.gitignore
 
