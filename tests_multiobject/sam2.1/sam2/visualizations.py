@@ -20,10 +20,8 @@ y_points = [
 	plt.ylabel("IoU VOT22ST (63 seqs)")
 	plt.title("Tracking by cropping")
 	
-	# plt.ylim(40, 75)
-	
-	y_ticks = plt.yticks()[0].tolist()  # Get existing y-tick values
-	y_ticks.append(73)  # Add 73 to y-ticks
+	y_ticks = plt.yticks()[0].tolist() 
+	y_ticks.append(73) 
 	plt.yticks(sorted(y_ticks))
 
 	plt.axhline(y=73, color='r', linestyle='--', label="baseline")
@@ -34,23 +32,19 @@ y_points = [
 	plt.savefig(file_path)
 
 def vis_regressed_parabola(file_path=None):
-	# Define the three points
-	points = np.array([[9, 71.3], [10, 74.1], [11, 71.4]])  # replace these with your specific points
+	points = np.array([[9, 71.3], [10, 74.1], [11, 71.4]])
 	x_points = points[:, 0]
 	y_points = points[:, 1]
 
-	# Set up the system of equations for a parabola y = ax^2 + bx + c
 	A = np.vstack([x_points**2, x_points, np.ones(len(x_points))]).T
 	a, b, c = np.linalg.solve(A, y_points)
 
-	# Generate x values for the parabola plot
 	x_fit = np.linspace(min(x_points) - 1, max(x_points) + 1, 100)
 	y_fit = a * x_fit**2 + b * x_fit + c
 
 	vertex_x = -b*1.0/(2*a)
 	vertex_y = a * (vertex_x**2) + b * vertex_x + c
 
-	# Plot the points and the parabola
 	plt.scatter(x_points, y_points, color='red', label=f'estimation for three points: vertex ({vertex_x:.2f}, {vertex_y:.2f})')
 	plt.plot(x_fit, y_fit, color='blue', label=f'parabola: $y = {a:.2f}x^2 + {b:.2f}x + {c:.2f}$')
 	plt.ylabel('IoU')
@@ -59,14 +53,11 @@ def vis_regressed_parabola(file_path=None):
 	plt.title('parabola regression')
 	plt.grid(True)
 
-	# Save the plot as an image
 	plt.savefig(file_path)
 
-	# Show the plot
 	plt.show()
 
 def vis_table():
-	# List of image file paths
 	base_path = "/datagrid/personal/rozumrus/BP_dg/sam2.1_output/marathon"
 
 	image_paths = [
@@ -80,25 +71,19 @@ def vis_table():
 	min_height = min(img.height for img in images)
 	images = [img.resize((min_width, min_height)) for img in images]
 
-	# Dimensions for the table
 	columns = 2
 	rows = 4
 
-	# Create a blank canvas for the table
 	table_width = columns * min_width
 	table_height = rows * min_height
 	result = Image.new("RGB", (table_width, table_height), color=(255, 255, 255))  # White background
 
-	# Paste images into the table grid
 	for i, img in enumerate(images):
-	    x = (i % columns) * min_width  # Column position
-	    y = (i // columns) * min_height  # Row position
+	    x = (i % columns) * min_width  
+	    y = (i // columns) * min_height  
 	    result.paste(img, (x, y))
 
-
-	# Save or show the final image
 	result.save("marathon_baseline.jpg")
-	# result.show()
 
 
 def vis_oracle(file_path=None):
@@ -131,10 +116,7 @@ def vis_oracle(file_path=None):
 	plt.title('oracle+RR experiment for soldier')
 	plt.grid(True)
 
-	# Save the plot as an image
 	plt.savefig(file_path)
-
-	# Show the plot
 	plt.show()
 
 
@@ -151,9 +133,6 @@ def vis_IoU_graph(ious, file_path):
     plt.savefig(file_path)
 
     plt.show()
-
-
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--vis_area', action="store_true")
@@ -172,5 +151,3 @@ elif args.vis_oracle:
 elif args.vis_table:
 	vis_table()
 
-
-# create_video()

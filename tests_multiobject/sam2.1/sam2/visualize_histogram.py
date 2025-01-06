@@ -7,11 +7,8 @@ from compute_iou import *
 from utilities_eval import *
 
 
-# Define thresholds for bins
 thresholds = [0.005, 0.01, 0.05, 0.1, 0.20, 0.5]
-
 base_path = "/datagrid/personal/rozumrus/BP_dg/votstval/sequences"
-
 SEQ = []
 
 for folder in os.listdir(base_path):
@@ -21,9 +18,6 @@ for folder in os.listdir(base_path):
         SEQ.append(folder)
 
 # SEQ = ['agility', 'animal', 'ants1', 'bag', 'ball2', 'ball3', 'basketball', 'birds1', 'birds2', 'bolt1', 'book', 'bubble', 'butterfly', 'car1', 'conduction1', 'crabs1', 'dinosaur', 'diver', 'drone1', 'drone_across', 'fernando', 'fish1', 'fish2', 'flamingo1', 'frisbee', 'girl', 'graduate', 'gymnastics1', 'gymnastics2', 'gymnastics3', 'hand', 'hand2', 'handball1', 'handball2', 'helicopter', 'iceskater1', 'iceskater2', 'kangaroo', 'lamb', 'leaves', 'marathon', 'matrix', 'monkey', 'motocross1', 'nature', 'polo', 'rabbit', 'rabbit2', 'rowing', 'shaking', 'singer2', 'singer3', 'snake', 'soccer1', 'soccer2', 'soldier', 'surfing', 'tennis', 'tiger', 'wheel', 'wiper', 'zebrafish1']
-
-
-
 
 average_segmentation_areas = []
 average_bounding_box_areas = []
@@ -43,7 +37,6 @@ for seq in SEQ:
     average_segmentation_areas.append(segmentation_area)
     average_bounding_box_areas.append(bbox_area)
 
-# Bin the average areas
 segmentation_bins = [0] * len(thresholds)
 bounding_box_bins = [0] * len(thresholds)
 
@@ -59,7 +52,6 @@ for area in average_bounding_box_areas:
             bounding_box_bins[i] += 1
             break
 
-# Plot the histogram
 labels = ['0%-0.05%', '0.05%-1%', '1%-5%', '5%-10%', '10%-20%', '20%-50%']
 x = np.arange(len(labels))
 width = 0.35 
@@ -68,7 +60,6 @@ fig, ax = plt.subplots()
 rects1 = ax.bar(x - width/2, segmentation_bins, width, label='Segmentation', color='lightblue')
 rects2 = ax.bar(x + width/2, bounding_box_bins, width, label='Bounding Box', color='lightgreen')
 
-# Add labels and title
 ax.set_xlabel('Percentage of total image area')
 ax.set_ylabel('Number of sequences')
 ax.set_title('Histogram of segmentation and bounding box areas')
@@ -76,7 +67,6 @@ ax.set_xticks(x)
 ax.set_xticklabels(labels)
 ax.legend()
 
-# Save the histogram
 plt.savefig('segm_area_vot24stval.png')
 
 

@@ -28,7 +28,6 @@ def get_mask_ptl_flow(prev_frame_path, next_frame_path,
     interpolation='bilinear', kernel_size=3, 
     close_trans=False, open_trans=False):
     
-
     if direct_comp_to_prev_pred:
         return prev_segmentation_mask
     
@@ -40,7 +39,6 @@ def get_mask_ptl_flow(prev_frame_path, next_frame_path,
     # IOAdapter is a helper to transform the two images into the input format accepted by PTLFlow models
     io_adapter = IOAdapter(model, img1.shape[:2])
     inputs = io_adapter.prepare_inputs([img1, img2])
-
 
     predictions = model({'images':inputs['images'].to(device)}) # load to cuda 
 
