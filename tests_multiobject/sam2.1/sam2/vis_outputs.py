@@ -97,10 +97,10 @@ def vis_BB_N_tune():
 
     # Plot
     plt.figure(figsize=(10, 6))
-    plt.plot(N, minBB_0, marker='o', label='minBB_0')
-    plt.plot(N[:12] + [20], minBB_128, marker='o', label='minBB_128')
-    plt.plot(N, minBB_256, marker='o', label='minBB_256')
-    plt.plot(N[:12] + [20], minBB_512, marker='o', label='minBB_512')
+    plt.plot(N, minBB_0, marker='o', label='m: 0')
+    plt.plot(N[:12] + [20], minBB_128, marker='o', label='m: 128')
+    plt.plot(N, minBB_256, marker='o', label='m: 256')
+    plt.plot(N[:12] + [20], minBB_512, marker='o', label='m: 512')
 
     plt.xticks([2, 4, 6, 8, 10, 12, 14, 16, 18, 20])
 
@@ -108,18 +108,18 @@ def vis_BB_N_tune():
     y_ticks.append(73.04)  
 
     plt.yticks(sorted(y_ticks)[:len(y_ticks)-1])
-    plt.axhline(y=73.04, color='r', linestyle='--', label="baseline")
+    plt.axhline(y=73.04, color='r', linestyle='--', label="original")
 
     # Labels and title
-    plt.xlabel('N: the factor for enlarging every bbox side', fontsize=12)
+    plt.xlabel('N: the factor for enlarging every side of prev. bbox', fontsize=12)
     plt.ylabel('mIoU', fontsize=12)
-    plt.title('mIoU on VOT2022ST for images cropped by prev. enalrged bbox', fontsize=14)
+    plt.title('mIoU on VOT2022ST for frames cropped by enlarged prev. bbox', fontsize=14)
     plt.legend()
     plt.grid(True)
 
     # Show plot
     plt.show()
-    plt.savefig("tuning_N_BB.png")
+    plt.savefig("tuning_N_with_mBB.png")
 
 
 def create_video():
@@ -301,6 +301,8 @@ def vis(mask_full_size, out_obj_ids, ann_frame_idx, image, to_save_path):
 # vis_mem_stride_tune()
 
 # create_video()
+
+vis_BB_N_tune()
 
 
 # extract_frames("/datagrid/personal/rozumrus/BP_dg/collected_videos/rolling_wallnuts.mov", "/datagrid/personal/rozumrus/BP_dg/collected_videos/rolling_wallnuts")

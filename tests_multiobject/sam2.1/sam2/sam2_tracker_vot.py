@@ -36,7 +36,7 @@ class SAM2Tracker(object):
         self.predictors = []
         self.prev_bboxs = [] 
         self.masks_all = []
-        self.Fs = [4, 2, 1]
+        self.Fs = [2, 1]
 
         self.inference_state = self.predictor.init_state()
         self.memory_stride = 5

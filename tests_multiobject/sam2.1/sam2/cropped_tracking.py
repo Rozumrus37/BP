@@ -172,8 +172,6 @@ def run_eval(seq):
             vis_cropped(mask_full_size, [OBJ_ID], out_frame_idx, image_path, prev_bbox, output_dir)
 
 
-
-
         if vis_out:
             vis(mask_full_size, out_obj_ids, out_frame_idx, image_path, output_dir)
 

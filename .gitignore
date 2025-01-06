@@ -15,6 +15,7 @@ tests_multiobject/.*
 tests_multiobject/trackers/.*
 tests_multiobject/sam2.1/sam2/.*
 tests_multiobject/sam2.1/sam2/hidden
+tests_mutliobject/sam2.1/sam2/csv_outputs
 *.jpg
 *.pt
 *.png

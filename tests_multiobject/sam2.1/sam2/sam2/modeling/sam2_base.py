@@ -811,7 +811,7 @@ class SAM2Base(torch.nn.Module):
                         out = unselected_cond_outputs.get(prev_frame_idx, None)
                     t_pos_and_prevs.append((t_pos, out))
             else:
-                to_subtract = [0, 32, 16, 8, 4, 2, 1] 
+                to_subtract = [0, 32, 16, 8, 4, 2, 1]
 
                 for t_pos in range(1, self.num_maskmem):
                     t_rel = self.num_maskmem - t_pos  # how many frames before current frame
