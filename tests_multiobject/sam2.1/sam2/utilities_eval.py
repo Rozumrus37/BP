@@ -35,6 +35,48 @@ def get_full_size_mask(out_mask_logits, bbox, H, W):
     return filled_mask
 
 
+""" Increase the height and width of the original bounding box by the factor and align 
+the new boudning box to the orignal bounding box's center """
+def increase_bbox_area(H, W, min_row, min_col, max_row, max_col, min_box_factor=256, factor=2):
+    # calculate the center of the original bbox
+    center_row = (min_row + max_row) / 2
+    center_col = (min_col + max_col) / 2
+
+    # calculate the height and width of the original bbox
+    height = max_row - min_row
+    width = max_col - min_col
+
+    # multiply height and width by the scale factor
+    scale_factor = factor ** 0.5
+    new_height = height * scale_factor
+    new_width = width * scale_factor
+
+    MIN_LEN = min_box_factor
+
+    if new_height < MIN_LEN:
+        new_height = MIN_LEN
+    
+    if new_width < MIN_LEN:
+        new_width = MIN_LEN
+
+    # calculate new coordinates of the bbox by aligning to the original bbox center
+    new_min_row = center_row - new_height / 2
+    new_min_col = center_col - new_width / 2
+    new_max_row = center_row + new_height / 2
+    new_max_col = center_col + new_width / 2
+
+    # check the boundaries and adjust if needed
+    if new_min_row < 0:
+        new_min_row = 0
+    if new_min_col < 0:
+        new_min_col = 0
+    if new_max_row > H:
+        new_max_row = H
+    if new_max_col > W:
+        new_max_col = W
+
+    return int(new_min_row), int(new_min_col), int(new_max_row), int(new_max_col)
+
 def increase_bbox_area_for_parallel(H, W, min_row, min_col, max_row, max_col, factor=2):
     # calculate the center of the original bbox
     center_row = (min_row + max_row) / 2

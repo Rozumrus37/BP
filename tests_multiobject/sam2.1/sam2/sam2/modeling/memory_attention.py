@@ -91,7 +91,9 @@ class MemoryAttentionLayer(nn.Module):
 
         # Self-Attn, Cross-Attn
         tgt = self._forward_sa(tgt, query_pos)
+        
         tgt = self._forward_ca(tgt, memory, query_pos, pos, num_k_exclude_rope)
+
         # MLP
         tgt2 = self.norm3(tgt)
         tgt2 = self.linear2(self.dropout(self.activation(self.linear1(tgt2))))

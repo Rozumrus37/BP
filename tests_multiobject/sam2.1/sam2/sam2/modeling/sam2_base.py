@@ -597,7 +597,6 @@ class SAM2Base(torch.nn.Module):
             low_res_masks, high_res_masks = low_res_multimasks, high_res_multimasks
 
 
-      
 
         # Extract object pointer from the SAM output token (with occlusion handling)
         obj_ptr = self.obj_ptr_proj(sam_output_token)

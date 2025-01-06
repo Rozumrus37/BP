@@ -40,7 +40,7 @@ def get_mask_ptl_flow(prev_frame_path, next_frame_path,
     io_adapter = IOAdapter(model, img1.shape[:2])
     inputs = io_adapter.prepare_inputs([img1, img2])
 
-    predictions = model({'images':inputs['images'].to(device)}) # load to cuda 
+    predictions = model({'images':inputs['images'].to(device)})  
 
     flow = predictions['flows'][0, 0]
 
@@ -50,8 +50,8 @@ def get_mask_ptl_flow(prev_frame_path, next_frame_path,
     flow_x, flow_y = [], []
 
     masked_flow = flow[:, mask_indices]  # Select masked values directly
-    flow_x = masked_flow[0].cpu().numpy()  # Extract x-component and convert to list
-    flow_y = masked_flow[1].cpu().numpy() # Extract y-component and convert to list
+    flow_x = masked_flow[0].cpu().numpy()  
+    flow_y = masked_flow[1].cpu().numpy() 
 
     x_coords_masked = x_coords[mask_indices].cpu().numpy()
     y_coords_masked = y_coords[mask_indices].cpu().numpy()

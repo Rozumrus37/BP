@@ -2,8 +2,6 @@
 
 # Define an array of commands
 commands=(
-
-
     "CUDA_VISIBLE_DEVICES=1, python3 parallel_tracking.py  --use_prev_box --thr_IoU_BB1_BBsm 0.2 --thr_Amask_to_Abb 0.1 --save_res_path thrIoU0.2_thrAmask_0.1.csv" 
     "CUDA_VISIBLE_DEVICES=1, python3 parallel_tracking.py  --use_prev_box --thr_IoU_BB1_BBsm 0.2 --thr_Amask_to_Abb 0.2 --save_res_path thrIoU0.2_thrAmask_0.2.csv" 
     "CUDA_VISIBLE_DEVICES=1, python3 parallel_tracking.py  --use_prev_box --thr_IoU_BB1_BBsm 0.2 --thr_Amask_to_Abb 0.3 --save_res_path thrIoU0.2_thrAmask_0.3.csv" 
@@ -139,14 +137,6 @@ commands=(
     # "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py  --use_prev_box --factor 100 --memory_stride 8 --exclude_empty_masks --no_mask_set_larger_prev_bbox"
     # "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py  --use_prev_box --factor 100 --memory_stride 9 --exclude_empty_masks --no_mask_set_larger_prev_bbox"
     # "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py  --use_prev_box --factor 100 --memory_stride 10 --exclude_empty_masks --no_mask_set_larger_prev_bbox"
-
-    
-      
-      
-      
- 
-
-
 
 
     # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 16"

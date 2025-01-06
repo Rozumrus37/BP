@@ -9,7 +9,6 @@ commands=(
     "CUDA_VISIBLE_DEVICES=0, python3 parallel_tracking.py  --use_prev_box --thr_IoU_BB1_BBsm 0.1 --thr_Amask_to_Abb 0.7 --save_res_path thrIoU0.1_thrAmask_0.7.csv" 
 
 
-
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 9 --crop_gt --save_res_path gt_factor9.csv"
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 16 --crop_gt --save_res_path gt_factor16.csv"
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 25 --crop_gt --save_res_path gt_factor25.csv"
@@ -44,9 +43,6 @@ commands=(
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 400 --min_box_factor 512  --save_res_path with512_factor400_duda.csv"
 
 
-
-
-
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 36 --min_box_factor 512  --save_res_path with64_factor36_duda.csv"
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 49  --save_res_path with128_factor49_duda.csv"
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 64  --save_res_path with128_factor64_duda.csv"
@@ -62,10 +58,6 @@ commands=(
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 121  --save_res_path with128_factor121_duda.csv"
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 144  --save_res_path with128_factor144_duda.csv"
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 169  --save_res_path with128_factor169_duda.csv"
-
-
-
-
 
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 100 --save_res_path factor100.csv"
     # "CUDA_VISIBLE_DEVICES=1, python3 cropped_tracking.py --use_prev_box --factor 4 --save_res_path factor4.csv"
@@ -195,14 +187,7 @@ commands=(
     # "CUDA_VISIBLE_DEVICES=0, python3 cropped_tracking.py  --use_prev_box --factor 100 --memory_stride 10 --exclude_empty_masks --no_mask_set_larger_prev_bbox"
 
     
-      
-      
-      
- 
-
-
-
-
+    
     # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 16"
     # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 64"
     # "CUDA_VISIBLE_DEVICES=2, python3 cropped_tracking.py --use_prev_box --factor 100"
